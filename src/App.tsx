@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Stage } from "./components/Stage";
 import { ClaimGroup } from "./components/ClaimGroup";
 import { BackgroundLayer } from "./components/BackgroundLayer";
@@ -6,9 +6,10 @@ import { Controls } from "./components/Controls";
 import { DEFAULT_DIMENSION, getDimension, type Dimension } from "./lib/dimensions";
 import { autoMainSize } from "./lib/layout";
 import { exportStageToJpg } from "./lib/exportImage";
-import type { Claim } from "./lib/types";
+import { SEC_MAX, secondaryStyle, type Claim } from "./lib/types";
 
-const randomTilt = () => Math.round((Math.random() * 5 - 2.5) * 10) / 10;
+const randomTilt = () => Math.round((Math.random() * 8 - 4) * 10) / 10; // ±4°
+const randomOffset = () => Math.round((Math.random() * 0.44 - 0.22) * 100) / 100; // ±0.22
 
 type Size = { w: number; h: number };
 type Pos = { x: number; y: number };
@@ -24,11 +25,9 @@ function extents(size: Size, tilt: number, dim: Dimension) {
   };
 }
 
-// Auf den Canvas begrenzen (nicht auf die Safety-Zone) — die Gruppe bleibt
-// vollständig sichtbar, darf aber aus der Safety-Zone ragen.
+// Auf den Canvas begrenzen (nicht auf die Safety-Zone).
 function clampToCanvas(pos: Pos, ext: { hx: number; hy: number }): Pos {
-  const fit = (v: number, h: number) =>
-    h > 0.5 ? 0.5 : Math.min(1 - h, Math.max(h, v));
+  const fit = (v: number, h: number) => (h > 0.5 ? 0.5 : Math.min(1 - h, Math.max(h, v)));
   return { x: fit(pos.x, ext.hx), y: fit(pos.y, ext.hy) };
 }
 
@@ -44,10 +43,16 @@ export default function App() {
     upper: "",
     main: "",
     lower: "",
-    caps: true,
+    capUpper: true,
+    capMain: true,
+    capLower: true,
+    upperStyle: "white",
     mainStyle: "rose",
+    lowerStyle: "white",
     tilt: randomTilt(),
     mainSize: 0.11,
+    secScale: SEC_MAX,
+    secOffset: 0,
     x: 0.5,
     y: 0.62,
   });
@@ -59,16 +64,36 @@ export default function App() {
     document.fonts.ready.then(() => setFontsReady(true));
   }, []);
 
-  // Simple-Mode: Schriftgröße automatisch an die Safety-Zone anpassen.
-  // Nur von den größenrelevanten Feldern abhängig (nicht von Position/Tilt).
+  // Standard-Mode: Schriftgröße automatisch an die Safety-Zone anpassen.
   useEffect(() => {
     if (advanced) return;
     const a = autoMainSize(claim, dimension);
     setClaim((c) => (Math.abs(a - c.mainSize) < 0.0005 ? c : { ...c, mainSize: a }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [advanced, claim.upper, claim.main, claim.lower, claim.caps, dimension, fontsReady]);
+  }, [advanced, claim.upper, claim.main, claim.lower, claim.capUpper, claim.capMain, claim.capLower, dimension, fontsReady]);
 
   const patchClaim = (patch: Partial<Claim>) => setClaim((c) => ({ ...c, ...patch }));
+
+  // Beim Verlassen des Advanced-Mode auf die Standard-Defaults zurücksetzen.
+  const onAdvanced = (on: boolean) => {
+    setAdvanced(on);
+    if (!on) {
+      setClaim((c) => ({
+        ...c,
+        secScale: SEC_MAX,
+        secOffset: 0,
+        capUpper: true,
+        capMain: true,
+        capLower: true,
+        upperStyle: secondaryStyle(c.mainStyle),
+        lowerStyle: secondaryStyle(c.mainStyle),
+      }));
+    }
+  };
+
+  const handleMeasure = useCallback((s: Size) => {
+    setGroupSize((p) => (p.w === s.w && p.h === s.h ? p : s));
+  }, []);
 
   const ext = useMemo(
     () => extents(groupSize, claim.tilt, dimension),
@@ -80,7 +105,6 @@ export default function App() {
     setClaim((c) => ({ ...c, x: p.x, y: p.y }));
   };
 
-  // Ragt die Gruppe aus der Safety-Zone? → Warnfarbe am Indikator.
   const warnSafeZone = useMemo(() => {
     const s = dimension.safe;
     const eps = 0.002;
@@ -121,8 +145,9 @@ export default function App() {
         onClaim={patchClaim}
         onDimension={setDimensionKey}
         onBackground={setNewBackground}
-        onAdvanced={setAdvanced}
-        onReroll={() => patchClaim({ tilt: randomTilt() })}
+        onAdvanced={onAdvanced}
+        onRerollTilt={() => patchClaim({ tilt: randomTilt() })}
+        onRerollOffset={() => patchClaim({ secOffset: randomOffset() })}
         onExport={handleExport}
         exporting={exporting}
       />
@@ -134,12 +159,7 @@ export default function App() {
           warnSafeZone={warnSafeZone}
           background={
             background ? (
-              <BackgroundLayer
-                src={background}
-                pos={bgPos}
-                stageRef={stageRef}
-                onChange={setBgPos}
-              />
+              <BackgroundLayer src={background} pos={bgPos} stageRef={stageRef} onChange={setBgPos} />
             ) : null
           }
         >
@@ -148,7 +168,7 @@ export default function App() {
             dimension={dimension}
             stageRef={stageRef}
             onDrag={onDrag}
-            onMeasure={setGroupSize}
+            onMeasure={handleMeasure}
           />
         </Stage>
         {warnSafeZone && <p className="zone-warning">⚠︎ Außerhalb der Safety-Zone</p>}

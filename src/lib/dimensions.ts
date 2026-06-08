@@ -1,7 +1,7 @@
 // Export-Dimensionen und Safety-Zones.
-// Safety-Insets sind Bruchteile (0..1) der jeweiligen Kante. Wichtige
-// Elemente (Claim) bleiben innerhalb dieser Zone — bei Stories ist oben/unten
-// mehr reserviert, weil dort die Instagram-UI überlagert.
+// Safety-Insets werden in absoluten Export-Pixeln definiert und hier in
+// Bruchteile (0..1) umgerechnet. Wichtige Elemente (Claim) bleiben in der Zone;
+// bei Stories ist unten am meisten reserviert (Instagram-UI).
 
 export type Insets = { top: number; right: number; bottom: number; left: number };
 
@@ -10,24 +10,33 @@ export type Dimension = {
   label: string;
   width: number;
   height: number;
-  safe: Insets;
+  safe: Insets; // Bruchteile
 };
 
+function make(
+  key: string,
+  label: string,
+  width: number,
+  height: number,
+  px: Insets,
+): Dimension {
+  return {
+    key,
+    label,
+    width,
+    height,
+    safe: {
+      top: px.top / height,
+      right: px.right / width,
+      bottom: px.bottom / height,
+      left: px.left / width,
+    },
+  };
+}
+
 export const DIMENSIONS: Dimension[] = [
-  {
-    key: "story",
-    label: "Story 1080×1920",
-    width: 1080,
-    height: 1920,
-    safe: { top: 0.14, right: 0.07, bottom: 0.16, left: 0.07 },
-  },
-  {
-    key: "post",
-    label: "Post 1080×1350",
-    width: 1080,
-    height: 1350,
-    safe: { top: 0.06, right: 0.06, bottom: 0.06, left: 0.06 },
-  },
+  make("story", "Story 1080×1920", 1080, 1920, { top: 216, right: 54, bottom: 432, left: 54 }),
+  make("post", "Post 1080×1350", 1080, 1350, { top: 216, right: 54, bottom: 216, left: 54 }),
 ];
 
 export const DEFAULT_DIMENSION = DIMENSIONS[0];
