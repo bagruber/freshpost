@@ -7,26 +7,26 @@ import type { Dimension } from "../lib/dimensions";
 
 type Props = {
   dimension: Dimension;
-  background: string | null;
+  background: ReactNode; // Hintergrund-Layer (unter allem)
   showSafeZone: boolean;
+  warnSafeZone: boolean; // Claim ragt aus der Safety-Zone → Warnfarbe
   children: ReactNode;
 };
 
 export const Stage = forwardRef<HTMLDivElement, Props>(function Stage(
-  { dimension, background, showSafeZone, children },
+  { dimension, background, showSafeZone, warnSafeZone, children },
   ref,
 ) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
 
-  // Skaliert die Stage so, dass sie in den verfügbaren Platz passt.
   useEffect(() => {
     const wrap = wrapRef.current;
     if (!wrap) return;
     const fit = () => {
-      const availW = wrap.clientWidth;
-      const availH = wrap.clientHeight;
-      setScale(Math.min(availW / dimension.width, availH / dimension.height));
+      setScale(
+        Math.min(wrap.clientWidth / dimension.width, wrap.clientHeight / dimension.height),
+      );
     };
     fit();
     const ro = new ResizeObserver(fit);
@@ -49,13 +49,13 @@ export const Stage = forwardRef<HTMLDivElement, Props>(function Stage(
             width: dimension.width,
             height: dimension.height,
             transform: `scale(${scale})`,
-            backgroundImage: background ? `url(${background})` : undefined,
           }}
         >
+          {background}
           {showSafeZone && (
             <div
               data-export-ignore
-              className="safe-zone"
+              className={`safe-zone${warnSafeZone ? " safe-zone--warn" : ""}`}
               style={{
                 top: `${safe.top * 100}%`,
                 right: `${safe.right * 100}%`,

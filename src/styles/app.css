@@ -79,6 +79,34 @@ body {
 
 .error { color: var(--fresh-rose-light); font-size: 0.8rem; min-height: 1rem; margin: 0; }
 
+.advanced {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-page);
+}
+
+.controls textarea:disabled { opacity: 0.45; }
+
+.canvas-area { position: relative; }
+.zone-warning {
+  position: absolute;
+  bottom: var(--space-4);
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  background: var(--fresh-rose);
+  color: var(--color-text-on-rose);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 700;
+  pointer-events: none;
+}
+
 /* === Stage === */
 .stage-wrap {
   width: 100%;
@@ -96,30 +124,49 @@ body {
   transform-origin: top left;
   overflow: hidden;
   background-color: var(--color-bg-page);
-  background-size: cover;
-  background-position: center;
 }
+
+.bg-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.bg-image:active { cursor: grabbing; }
 
 .safe-zone {
   position: absolute;
   border: 2px dashed var(--color-border-glass);
   pointer-events: none;
   border-radius: var(--radius-sm);
+  transition: border-color 0.2s;
 }
+.safe-zone--warn { border-color: var(--fresh-rose); border-style: solid; }
 
-.claim-sticker {
+.claim-group {
   position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   font-family: var(--font-display);
-  font-weight: 800;
-  line-height: 1.02;
+  line-height: 1;
   text-align: center;
-  border-radius: var(--radius-sm);
   cursor: grab;
-  touch-action: none; /* Pointer-Drag statt Scroll/Zoom auf dem Sticker */
+  touch-action: none; /* Pointer-Drag statt Scroll/Zoom */
   user-select: none;
-  white-space: pre-wrap;
 }
-.claim-sticker:active { cursor: grabbing; }
+.claim-group:active { cursor: grabbing; }
+
+.claim-box {
+  white-space: nowrap; /* echte Umbrüche nur über die Eingabe */
+  line-height: 1;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sticker);
+}
 
 /* Mobile: Canvas oben, Controls darunter. */
 @media (max-width: 760px) {

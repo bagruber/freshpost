@@ -35,11 +35,3 @@ export const DEFAULT_DIMENSION = DIMENSIONS[0];
 export function getDimension(key: string): Dimension {
   return DIMENSIONS.find((d) => d.key === key) ?? DEFAULT_DIMENSION;
 }
-
-// Begrenzt eine Mittelpunkt-Position (Bruchteile 0..1) auf die Safety-Zone.
-export function clampToSafe(x: number, y: number, safe: Insets): { x: number; y: number } {
-  return {
-    x: Math.min(1 - safe.right, Math.max(safe.left, x)),
-    y: Math.min(1 - safe.bottom, Math.max(safe.top, y)),
-  };
-}
