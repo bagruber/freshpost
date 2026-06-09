@@ -8,7 +8,7 @@ const MOBILE_QUERY = "(max-width: 760px)";
 const PEEK = 76; // sichtbarer Streifen im geschlossenen Zustand (px)
 const SHEET_VH = 0.72; // Sheet-Höhe relativ zur Viewport-Höhe
 
-export function BottomSheet({ children }: { children: ReactNode }) {
+export function BottomSheet({ warn, children }: { warn: boolean; children: ReactNode }) {
   const [isMobile, setIsMobile] = useState(() => window.matchMedia(MOBILE_QUERY).matches);
   const [open, setOpen] = useState(false);
   const [drag, setDrag] = useState<number | null>(null);
@@ -47,6 +47,12 @@ export function BottomSheet({ children }: { children: ReactNode }) {
 
   return (
     <div className={`controls-shell${isMobile ? " as-sheet" : ""}`} style={style}>
+      {warn && (
+        <div className="zone-warning" role="alert">
+          <span className="zone-warning-icon">⚠</span>
+          Claim außerhalb der Safety-Zone
+        </div>
+      )}
       <div className="sheet-handle" onPointerDown={onDown}>
         <span />
       </div>

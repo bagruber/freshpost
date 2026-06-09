@@ -102,21 +102,20 @@ body {
 .caps-row { display: flex; flex-direction: column; gap: var(--space-2); }
 .caps-row .field-inline { font-size: 0.8rem; }
 
-.canvas-area { position: relative; }
+/* Warn-Banner am oberen Rand der Controls/des Sheets (nicht über dem Canvas). */
 .zone-warning {
-  position: absolute;
-  bottom: var(--space-4);
-  left: 50%;
-  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
   margin: 0;
-  padding: var(--space-2) var(--space-4);
+  padding: var(--space-3) var(--space-4);
   background: var(--fresh-rose);
   color: var(--color-text-on-rose);
-  border-radius: var(--radius-sm);
-  font-size: 0.8rem;
   font-weight: 700;
-  pointer-events: none;
+  font-size: 0.85rem;
 }
+.zone-warning-icon { font-size: 1.15rem; line-height: 1; }
 
 /* === Stage === */
 .stage-wrap {
@@ -151,12 +150,15 @@ body {
 
 .safe-zone {
   position: absolute;
-  border: 2px dashed var(--color-border-glass);
+  border: 3px dashed var(--color-border-glass);
   pointer-events: none;
   border-radius: var(--radius-sm);
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, background 0.2s;
 }
-.safe-zone--warn { border-color: var(--fresh-rose); border-style: solid; }
+.safe-zone--warn {
+  border: 4px solid var(--fresh-rose);
+  background: color-mix(in srgb, var(--fresh-rose) 14%, transparent);
+}
 
 .claim-group {
   position: absolute;
@@ -201,7 +203,8 @@ body {
     grid-template-columns: 1fr;
     height: 100%;
   }
-  .canvas-area { padding: var(--space-3); padding-bottom: 84px; }
+  /* Canvas etwas kleiner, damit über dem Sheet mehr Luft bleibt. */
+  .canvas-area { padding: var(--space-4) var(--space-5) 112px; }
 
   .controls-shell.as-sheet {
     position: fixed;
@@ -209,6 +212,7 @@ body {
     right: 0;
     bottom: 0;
     height: 72vh;
+    overflow: hidden; /* runde obere Ecken auch für Banner/Inhalt */
     border-right: none;
     border-top: 1px solid var(--color-border-subtle);
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;

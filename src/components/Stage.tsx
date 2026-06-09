@@ -52,20 +52,22 @@ export const Stage = forwardRef<HTMLDivElement, Props>(function Stage(
           }}
         >
           {background}
-          {showSafeZone && (
-            <div
-              data-export-ignore
-              className={`safe-zone${warnSafeZone ? " safe-zone--warn" : ""}`}
-              style={{
-                top: `${safe.top * 100}%`,
-                right: `${safe.right * 100}%`,
-                bottom: `${safe.bottom * 100}%`,
-                left: `${safe.left * 100}%`,
-              }}
-            />
-          )}
           {children}
         </div>
+        {/* Safety-Zone außerhalb der skalierten Stage: Rahmen in echten
+            Bildschirm-Pixeln (sonst auf Mobile fast unsichtbar) und nie im
+            Export enthalten. */}
+        {showSafeZone && (
+          <div
+            className={`safe-zone${warnSafeZone ? " safe-zone--warn" : ""}`}
+            style={{
+              top: `${safe.top * 100}%`,
+              right: `${safe.right * 100}%`,
+              bottom: `${safe.bottom * 100}%`,
+              left: `${safe.left * 100}%`,
+            }}
+          />
+        )}
       </div>
     </div>
   );

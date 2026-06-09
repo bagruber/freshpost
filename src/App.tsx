@@ -169,7 +169,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <BottomSheet>
+      <BottomSheet warn={warnSafeZone}>
         <Controls
           claim={claim}
           dimension={dimension}
@@ -208,7 +208,6 @@ export default function App() {
             onMeasure={handleMeasure}
           />
         </Stage>
-        {warnSafeZone && <p className="zone-warning">⚠︎ Außerhalb der Safety-Zone</p>}
       </main>
     </div>
   );

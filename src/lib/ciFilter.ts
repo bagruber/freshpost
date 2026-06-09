@@ -71,13 +71,21 @@ function hdiff(a: number, b: number): number {
 const normH = (h: number) => ((Math.round(h) % 360) + 360) % 360;
 
 function buildLUTs(p: Grade) {
+  // Echte Kontrast-S-Kurve an den Rändern (unten dunkler, oben heller),
+  // plus ein sehr subtiler Decontrast in den Mitteltönen (Haut).
+  // f(x) = x + sin(2πx)/(2π) · (−A·edge + C·mid)
+  //   edge = 1 − exp(−22·d²)  → 0 in der Mitte, →1 an den Rändern (S-Kurve)
+  //   mid  = exp(−40·d²)      → schmales Mittenband (minimaler Decontrast)
   const curvLUT = new Float32Array(256);
-  const A = p.cv * 0.6;
+  const A = p.cv * 0.65; // Kontrast-Stärke
+  const C = p.cv * 0.06; // Mid-Decontrast (bewusst klein)
   for (let i = 0; i < 256; i++) {
     const x = i / 255;
-    const sinCorr = Math.sin(2 * Math.PI * x) / (2 * Math.PI);
-    const gaussSup = 0.96 * Math.exp(-75 * (x - 0.5) * (x - 0.5));
-    curvLUT[i] = Math.max(0, Math.min(1, x + A * sinCorr * (1 - gaussSup)));
+    const d = x - 0.5;
+    const sinT = Math.sin(2 * Math.PI * x) / (2 * Math.PI);
+    const edge = 1 - Math.exp(-22 * d * d);
+    const mid = Math.exp(-40 * d * d);
+    curvLUT[i] = Math.max(0, Math.min(1, x + sinT * (-A * edge + C * mid)));
   }
 
   const roseW = new Float32Array(360);
@@ -91,7 +99,9 @@ function buildLUTs(p: Grade) {
     if (wd < 0) {
       windW[i] = gauss(Math.abs(wd), 12) * ss(163, 176, i) * (1 - ss(183, 200, i));
     }
-    riverW[i] = gauss(Math.abs(hdiff(i, 200)), 28) * ss(185, 198, i) * (1 - ss(245, 262, i));
+    // River 200°, verbreitert Richtung Violett (bis ~260°): σ=36, oberer
+    // Fade nach 252°–272° verschoben.
+    riverW[i] = gauss(Math.abs(hdiff(i, 200)), 36) * ss(185, 198, i) * (1 - ss(252, 272, i));
     blueW[i] = gauss(Math.abs(hdiff(i, 212)), 36) * ss(168, 183, i) * (1 - ss(245, 262, i));
   }
 
