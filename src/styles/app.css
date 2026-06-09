@@ -230,11 +230,26 @@ body {
   background-color: var(--color-bg-page);
 }
 
-/* Illustrations-Mode: dunkler River-Hintergrund (Muster folgt später). */
-.river-bg {
+/* Illustrations-Mode: dunkle River-Basis + optionales Muster (Papier/Punkte).
+   isolation, damit der Multiply-Blend nur innerhalb wirkt. */
+.illu-bg {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 50% 35%, var(--fresh-river), var(--fresh-dark-c));
+  isolation: isolate;
+  background: radial-gradient(circle at 50% 32%, var(--fresh-dark-c), var(--fresh-dark-d));
+}
+.bg-paper {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  mix-blend-mode: multiply;
+  filter: contrast(1.75) brightness(1.05);
+}
+.bg-dots {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
 }
 
 /* Ziehbare Illustration mit Sticker-artigem Schatten. */

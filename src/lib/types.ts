@@ -1,5 +1,7 @@
 export type Mode = "photo" | "illustration";
 
+export type BgPattern = "paper" | "dots" | "none";
+
 export type StickerStyle =
   | "rose"
   | "wind"

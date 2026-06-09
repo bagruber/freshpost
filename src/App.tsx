@@ -12,9 +12,11 @@ import { extents, clampToCanvas, violatesSafe, type Size, type Pos } from "./lib
 import { exportStageToJpg } from "./lib/exportImage";
 import { loadBackgroundImage, IMAGE_ERROR_TEXT, ACCEPTED_TYPES } from "./lib/image";
 import { loadIllustration, illuSrc, ILLU_ERROR_TEXT, ILLU_TYPES, type Illu } from "./lib/illustration";
-import { SEC_MAX, secondaryStyle, type Claim, type Mode } from "./lib/types";
+import { SEC_MAX, secondaryStyle, type Claim, type Mode, type BgPattern } from "./lib/types";
 import { GRADE_BASE, scaleGrade, type Grade } from "./lib/ciFilter";
+import { generateDotPattern } from "./lib/dotPattern";
 import { RANDOM, DEFAULTS } from "./lib/config";
+import paperUrl from "./assets/paper.jpg";
 
 const rnd = (range: number) => Math.round((Math.random() * 2 - 1) * range * 100) / 100;
 const randomTilt = () => rnd(RANDOM.tiltDeg);
@@ -34,6 +36,7 @@ export default function App() {
   const [illu, setIllu] = useState<Illu | null>(null);
   const [recolor, setRecolor] = useState(true);
   const [illuSize, setIlluSize] = useState<Size>({ w: 0, h: 0 });
+  const [bgPattern, setBgPattern] = useState<BgPattern>("paper");
   const [claim, setClaim] = useState<Claim>({
     upper: "", main: "", lower: "",
     capUpper: true, capMain: true, capLower: true,
@@ -119,6 +122,13 @@ export default function App() {
 
   const hasContent = mode === "photo" ? hasBackground : illu != null;
 
+  const dotsUrl = useMemo(
+    () => (mode === "illustration" && bgPattern === "dots"
+      ? generateDotPattern(dimension.width, dimension.height)
+      : null),
+    [mode, bgPattern, dimension],
+  );
+
   const handleMeasure = useCallback((s: Size) => {
     setGroupSize((p) => (p.w === s.w && p.h === s.h ? p : s));
   }, []);
@@ -173,10 +183,12 @@ export default function App() {
           illuScale={illu?.scale ?? null}
           illuIsSvg={illu?.isSvg ?? false}
           recolor={recolor}
+          bgPattern={bgPattern}
           imgStrength={imgStrength}
           grade={grade}
           uploadError={uploadError}
           onMode={setMode}
+          onBgPattern={setBgPattern}
           onClaim={patchClaim}
           onDimension={setDimensionKey}
           onFile={handleFile}
@@ -212,7 +224,14 @@ export default function App() {
           warnSafeZone={warnSafeZone}
           background={
             mode === "illustration" ? (
-              <div className="river-bg" />
+              <div className="illu-bg">
+                {bgPattern === "paper" && (
+                  <div className="bg-paper" style={{ backgroundImage: `url(${paperUrl})` }} />
+                )}
+                {bgPattern === "dots" && dotsUrl && (
+                  <div className="bg-dots" style={{ backgroundImage: `url(${dotsUrl})` }} />
+                )}
+              </div>
             ) : bgSrc ? (
               <BackgroundLayer
                 src={bgSrc}

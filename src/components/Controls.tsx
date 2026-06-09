@@ -1,4 +1,4 @@
-import type { Claim, StickerStyle, Mode } from "../lib/types";
+import type { Claim, StickerStyle, Mode, BgPattern } from "../lib/types";
 import { STYLES, SEC_MAX, boundaryOk, secondaryStyle } from "../lib/types";
 import type { Grade } from "../lib/ciFilter";
 import { SLIDER } from "../lib/config";
@@ -17,10 +17,12 @@ type Props = {
   illuScale: number | null;
   illuIsSvg: boolean;
   recolor: boolean;
+  bgPattern: BgPattern;
   imgStrength: number; // 0..100 (Standard-Modus)
   grade: Grade; // Advanced-Werte 0..1
   uploadError: string | null;
   onMode: (m: Mode) => void;
+  onBgPattern: (p: BgPattern) => void;
   onClaim: (patch: Partial<Claim>) => void;
   onDimension: (key: string) => void;
   onFile: (file: File | undefined) => void;
@@ -67,9 +69,9 @@ function ColorSelect({
 
 export function Controls(props: Props) {
   const {
-    claim, dimension, advanced, mode, hasBackground, hasIllu, illuScale, illuIsSvg, recolor,
+    claim, dimension, advanced, mode, hasBackground, hasIllu, illuScale, illuIsSvg, recolor, bgPattern,
     imgStrength, grade, uploadError,
-    onMode, onClaim, onDimension, onFile, onClearBackground, onClearIllu, onIlluScale, onRecolor,
+    onMode, onBgPattern, onClaim, onDimension, onFile, onClearBackground, onClearIllu, onIlluScale, onRecolor,
     onAdvanced, onReroll, onImgStrength, onGrade,
   } = props;
   const isPhoto = mode === "photo";
@@ -93,6 +95,17 @@ export function Controls(props: Props) {
         <button className={isPhoto ? "active" : ""} onClick={() => onMode("photo")}>Foto</button>
         <button className={!isPhoto ? "active" : ""} onClick={() => onMode("illustration")}>Illustration</button>
       </div>
+
+      {!isPhoto && (
+        <label className="field">
+          <span>Hintergrund</span>
+          <select value={bgPattern} onChange={(e) => onBgPattern(e.target.value as BgPattern)}>
+            <option value="paper">Papier</option>
+            <option value="dots">Punkte</option>
+            <option value="none">Keins</option>
+          </select>
+        </label>
+      )}
 
       <label className="field">
         <span>Oben (optional)</span>
