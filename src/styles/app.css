@@ -238,16 +238,16 @@ body {
   isolation: isolate;
   background: radial-gradient(circle at 50% 32%, var(--fresh-dark-d), var(--fresh-dark-omega));
 }
-/* Helle Papiertextur auf dunklem Grund: invertieren → dunkles Papier mit hellen
-   Graten, dann screen → subtile helle Knick-Struktur. */
+/* Helle Papiertextur auf dunklem Grund ohne Aufhellen: per brightness auf ~0.5
+   zentrieren und per contrast die Knicke spreizen, dann soft-light — flache
+   Flächen lassen den dunklen Grund unverändert, Knicke werden subtil dunkler. */
 .bg-paper {
   position: absolute;
   inset: 0;
   background-size: cover;
   background-position: center;
-  filter: invert(1) brightness(1.4);
-  mix-blend-mode: screen;
-  opacity: 0.6;
+  filter: brightness(0.5) contrast(1.9);
+  mix-blend-mode: soft-light;
 }
 .bg-dots {
   position: absolute;
