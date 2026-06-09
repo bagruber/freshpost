@@ -39,15 +39,22 @@ body {
 .controls-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 .sheet-handle { display: none; }
 
-/* Header oben im Sheet/Sidebar: Export prominent + Bearbeiten-Hinweis. */
+/* Header oben im Sheet/Sidebar: Bearbeiten-Hinweis (prominent) + kompakter
+   Export in zweiter Reihe. */
 .sheet-header {
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
   padding: var(--space-3) var(--space-5);
   border-bottom: 1px solid var(--color-border-subtle);
 }
-.sheet-export { flex: 1; margin: 0; }
+.sheet-export {
+  margin: 0;
+  align-self: flex-start;
+  padding: var(--space-2) var(--space-4);
+  font-size: 0.85rem;
+}
 .sheet-hint { display: none; } /* nur mobil sichtbar */
 
 .controls {
@@ -149,12 +156,12 @@ body {
 
 .bg-image {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  left: 50%;
+  top: 50%;
+  max-width: none; /* Breite/Höhe/Transform kommen inline (Pan/Zoom) */
+  transform-origin: center;
   cursor: grab;
-  touch-action: none;
+  touch-action: none; /* Pinch/Pan selbst behandeln, kein Browser-Scroll/Zoom */
   user-select: none;
 }
 .bg-image:active { cursor: grabbing; }
@@ -267,13 +274,15 @@ body {
     background: var(--color-border-glass);
   }
 
-  /* Mobil: Tool-Name weg, stattdessen Bearbeiten-Hinweis im Header. */
+  /* Mobil: Tool-Name weg, stattdessen prominenter Bearbeiten-Hinweis. */
   .controls-title { display: none; }
   .sheet-hint {
-    display: inline;
-    font-size: 0.8rem;
-    font-weight: 700;
-    color: var(--color-text-tertiary);
-    white-space: nowrap;
+    display: block;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.2rem;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: var(--fresh-rose);
   }
 }

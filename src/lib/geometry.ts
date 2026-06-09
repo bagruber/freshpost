@@ -25,6 +25,39 @@ export function clampToCanvas(pos: Pos, ext: Extents): Pos {
   return { x: fit(pos.x, ext.hx), y: fit(pos.y, ext.hy) };
 }
 
+// === Hintergrund Pan/Zoom ===
+
+export type CoverGeom = {
+  imgW: number; // Cover-Breite (zoom=1) in Stage-Pixeln
+  imgH: number;
+  zoomMax: number; // bis 1:1 Quelle→Canvas (kein Upscaling über 100%)
+};
+
+// Cover-Geometrie: kleinste Skalierung, bei der die Quelle das Canvas füllt,
+// plus der maximale Zoom, bevor die Quelle über ihre native Auflösung skaliert.
+export function coverGeom(srcW: number, srcH: number, dim: Dimension): CoverGeom {
+  const coverScale = Math.max(dim.width / srcW, dim.height / srcH);
+  return {
+    imgW: srcW * coverScale,
+    imgH: srcH * coverScale,
+    zoomMax: Math.max(1, 1 / coverScale),
+  };
+}
+
+// Begrenzt Zoom auf [1, zoomMax] und Pan so, dass nie ein Rand sichtbar wird.
+export function clampView(zoom: number, pan: Pos, g: CoverGeom, dim: Dimension): { zoom: number; pan: Pos } {
+  const z = Math.min(g.zoomMax, Math.max(1, zoom));
+  const maxX = Math.max(0, (g.imgW * z - dim.width) / 2);
+  const maxY = Math.max(0, (g.imgH * z - dim.height) / 2);
+  return {
+    zoom: z,
+    pan: {
+      x: Math.min(maxX, Math.max(-maxX, pan.x)),
+      y: Math.min(maxY, Math.max(-maxY, pan.y)),
+    },
+  };
+}
+
 // Ragt die (rotierte) Gruppe aus der Safety-Zone?
 export function violatesSafe(pos: Pos, ext: Extents, safe: Insets): boolean {
   const eps = 0.002;

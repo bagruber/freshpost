@@ -46,8 +46,8 @@ export default function App() {
     () => (advanced ? gradeAdv : scaleGrade(GRADE_BASE, imgStrength / 100)),
     [advanced, gradeAdv, imgStrength],
   );
-  const { bgSrc, bgPos, setBgPos, hasBackground, imgRef, setImage, swapFullForExport } =
-    useBackgroundImage(grade);
+  const { bgSrc, hasBackground, imgRef, setImage, swapFullForExport, geom, zoom, pan, setView, transformStyle } =
+    useBackgroundImage(grade, dimension);
 
   useEffect(() => {
     document.fonts.ready.then(() => setFontsReady(true));
@@ -119,7 +119,7 @@ export default function App() {
         warn={warnSafeZone}
         header={
           <button className="btn-primary sheet-export" onClick={handleExport} disabled={exporting}>
-            {exporting ? "Exportiere…" : "Als JPG exportieren"}
+            {exporting ? "Exportiere…" : "JPG exportieren"}
           </button>
         }
       >
@@ -147,7 +147,17 @@ export default function App() {
           warnSafeZone={warnSafeZone}
           background={
             bgSrc ? (
-              <BackgroundLayer ref={imgRef} src={bgSrc} pos={bgPos} stageRef={stageRef} onChange={setBgPos} />
+              <BackgroundLayer
+                src={bgSrc}
+                imgRef={imgRef}
+                style={transformStyle}
+                stageRef={stageRef}
+                dimension={dimension}
+                geom={geom}
+                zoom={zoom}
+                pan={pan}
+                setView={setView}
+              />
             ) : null
           }
         >

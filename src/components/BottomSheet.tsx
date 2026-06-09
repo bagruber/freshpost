@@ -6,7 +6,7 @@ import { usePointerDrag } from "../hooks/usePointerDrag";
 // rendert es die Controls einfach als Seitenspalte — die CSS-Klasse steuert das.
 
 const MOBILE_QUERY = "(max-width: 760px)";
-const PEEK = 108; // sichtbarer Streifen im geschlossenen Zustand (px): Griff + Header
+const PEEK = 128; // sichtbarer Streifen im geschlossenen Zustand (px): Griff + Header
 const SHEET_VH = 0.72; // Sheet-Höhe relativ zur Viewport-Höhe
 
 type Props = { warn: boolean; header: ReactNode; children: ReactNode };

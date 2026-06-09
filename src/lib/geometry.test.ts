@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extents, clampToCanvas, violatesSafe } from "./geometry";
+import { extents, clampToCanvas, violatesSafe, coverGeom, clampView } from "./geometry";
 import type { Dimension } from "./dimensions";
 
 const dim: Dimension = {
@@ -41,5 +41,41 @@ describe("violatesSafe", () => {
   });
   it("true wenn über die Zone hinaus", () => {
     expect(violatesSafe({ x: 0.12, y: 0.5 }, ext, dim.safe)).toBe(true);
+  });
+});
+
+describe("coverGeom", () => {
+  it("füllt das Canvas und erlaubt Zoom bis 1:1, wenn die Quelle groß genug ist", () => {
+    // Quelle 1200×2400 deckt 1000×2000 ab; coverScale = max(0.833, 0.833).
+    const g = coverGeom(1200, 2400, dim);
+    expect(g.imgW).toBeCloseTo(1000);
+    expect(g.imgH).toBeCloseTo(2000);
+    expect(g.zoomMax).toBeCloseTo(1.2); // 1 / 0.8333
+  });
+
+  it("sperrt Zoom (zoomMax=1), wenn die Quelle kleiner als das Canvas ist", () => {
+    const g = coverGeom(500, 1000, dim); // coverScale = 2 → Upscaling nötig
+    expect(g.zoomMax).toBe(1);
+  });
+});
+
+describe("clampView", () => {
+  const g = coverGeom(1200, 2400, dim); // imgW 1000, imgH 2000, zoomMax 1.2
+
+  it("begrenzt Zoom auf [1, zoomMax]", () => {
+    expect(clampView(0.5, { x: 0, y: 0 }, g, dim).zoom).toBe(1);
+    expect(clampView(5, { x: 0, y: 0 }, g, dim).zoom).toBeCloseTo(1.2);
+  });
+
+  it("verhindert sichtbare Ränder beim Pan", () => {
+    // Bei zoom 1.2: imgW 1200, imgH 2400 → Überhang (100, 200).
+    const v = clampView(1.2, { x: 9999, y: 9999 }, g, dim);
+    expect(v.pan.x).toBeCloseTo(100);
+    expect(v.pan.y).toBeCloseTo(200);
+  });
+
+  it("erlaubt keinen Pan bei exaktem Cover (kein Überhang)", () => {
+    const v = clampView(1, { x: 50, y: 50 }, g, dim); // imgW 1000 = Canvas, imgH 2000 = Canvas
+    expect(v.pan).toEqual({ x: 0, y: 0 });
   });
 });
