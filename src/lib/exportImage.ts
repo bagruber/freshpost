@@ -19,9 +19,6 @@ export async function exportStageToJpg(
     pixelRatio: 1,
     cacheBust: true,
     backgroundColor: "#132026",
-    // Bildschirm-Hilfen (Safety-Zone etc.) nicht mit exportieren.
-    filter: (node) =>
-      !(node instanceof HTMLElement && node.dataset.exportIgnore !== undefined),
   });
 
   const blob: Blob = await new Promise((resolve, reject) =>

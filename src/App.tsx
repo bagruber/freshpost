@@ -4,33 +4,16 @@ import { ClaimGroup } from "./components/ClaimGroup";
 import { BackgroundLayer } from "./components/BackgroundLayer";
 import { Controls } from "./components/Controls";
 import { BottomSheet } from "./components/BottomSheet";
-import { DEFAULT_DIMENSION, getDimension, type Dimension } from "./lib/dimensions";
+import { useBackgroundImage } from "./hooks/useBackgroundImage";
+import { DEFAULT_DIMENSION, getDimension } from "./lib/dimensions";
 import { autoMainSize } from "./lib/layout";
+import { extents, clampToCanvas, violatesSafe, type Size, type Pos } from "./lib/geometry";
 import { exportStageToJpg } from "./lib/exportImage";
 import { SEC_MAX, secondaryStyle, type Claim } from "./lib/types";
-import { GRADE_BASE, scaleGrade, filterToDataUrl, type Grade } from "./lib/ciFilter";
-import type { LoadedImage } from "./lib/image";
+import { GRADE_BASE, scaleGrade, type Grade } from "./lib/ciFilter";
 
 const randomTilt = () => Math.round((Math.random() * 8 - 4) * 10) / 10; // ±4°
 const randomOffset = () => Math.round((Math.random() * 0.44 - 0.22) * 100) / 100; // ±0.22
-
-type Size = { w: number; h: number };
-type Pos = { x: number; y: number };
-
-function extents(size: Size, tilt: number, dim: Dimension) {
-  const a = (tilt * Math.PI) / 180;
-  const c = Math.abs(Math.cos(a));
-  const s = Math.abs(Math.sin(a));
-  return {
-    hx: (size.w * c + size.h * s) / 2 / dim.width,
-    hy: (size.w * s + size.h * c) / 2 / dim.height,
-  };
-}
-
-function clampToCanvas(pos: Pos, ext: { hx: number; hy: number }): Pos {
-  const fit = (v: number, h: number) => (h > 0.5 ? 0.5 : Math.min(1 - h, Math.max(h, v)));
-  return { x: fit(pos.x, ext.hx), y: fit(pos.y, ext.hy) };
-}
 
 export default function App() {
   const [dimensionKey, setDimensionKey] = useState(DEFAULT_DIMENSION.key);
@@ -38,6 +21,8 @@ export default function App() {
   const [exporting, setExporting] = useState(false);
   const [fontsReady, setFontsReady] = useState(false);
   const [groupSize, setGroupSize] = useState<Size>({ w: 0, h: 0 });
+  const [imgStrength, setImgStrength] = useState(50); // Standard: ein CI-Look-Regler
+  const [gradeAdv, setGradeAdv] = useState<Grade>(() => scaleGrade(GRADE_BASE, 0.5));
   const [claim, setClaim] = useState<Claim>({
     upper: "", main: "", lower: "",
     capUpper: true, capMain: true, capLower: true,
@@ -50,17 +35,6 @@ export default function App() {
     x: 0.5, y: 0.62,
   });
 
-  // Hintergrund-Pipeline: Originale als ImageData in Refs, angezeigt wird die
-  // gefilterte Vorschau (klein) als Data-URL.
-  const origFull = useRef<ImageData | null>(null);
-  const origPreview = useRef<ImageData | null>(null);
-  const imgRef = useRef<HTMLImageElement>(null);
-  const [bgSrc, setBgSrc] = useState<string | null>(null);
-  const [bgPos, setBgPos] = useState<Pos>({ x: 50, y: 50 });
-  const [imageVersion, setImageVersion] = useState(0);
-  const [imgStrength, setImgStrength] = useState(50); // Standard: ein Regler
-  const [gradeAdv, setGradeAdv] = useState<Grade>(() => scaleGrade(GRADE_BASE, 0.5));
-
   const stageRef = useRef<HTMLDivElement>(null);
   const dimension = getDimension(dimensionKey);
 
@@ -70,33 +44,29 @@ export default function App() {
     () => (advanced ? gradeAdv : scaleGrade(GRADE_BASE, imgStrength / 100)),
     [advanced, gradeAdv, imgStrength],
   );
+  const bg = useBackgroundImage(grade);
 
   useEffect(() => {
     document.fonts.ready.then(() => setFontsReady(true));
   }, []);
 
-  // Standard-Mode: Schriftgröße automatisch an die Safety-Zone anpassen.
-  useEffect(() => {
-    if (advanced) return;
-    const a = autoMainSize(claim, dimension);
-    setClaim((c) => (Math.abs(a - c.mainSize) < 0.0005 ? c : { ...c, mainSize: a }));
+  // Effektive Main-Größe wird abgeleitet (nicht gespeichert): Standard = auto
+  // an die Safety-Zone, Advanced = manueller Wert.
+  const effectiveMainSize = useMemo(
+    () => (advanced ? claim.mainSize : autoMainSize(claim, dimension)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [advanced, claim.upper, claim.main, claim.lower, claim.capUpper, claim.capMain, claim.capLower, dimension, fontsReady]);
-
-  // Live-Vorschau des Filters (kleine Auflösung), per rAF gedrosselt.
-  useEffect(() => {
-    const prev = origPreview.current;
-    if (!prev) return;
-    const raf = requestAnimationFrame(() => setBgSrc(filterToDataUrl(prev, grade)));
-    return () => cancelAnimationFrame(raf);
-  }, [grade, imageVersion]);
+    [advanced, claim.mainSize, claim.upper, claim.main, claim.lower,
+     claim.capUpper, claim.capMain, claim.capLower, dimension, fontsReady],
+  );
 
   const patchClaim = (patch: Partial<Claim>) => setClaim((c) => ({ ...c, ...patch }));
 
   const onAdvanced = (on: boolean) => {
     setAdvanced(on);
     if (on) {
+      // Beim Wechsel in Advanced die Regler von den Standard-Werten übernehmen.
       setGradeAdv(scaleGrade(GRADE_BASE, imgStrength / 100));
+      setClaim((c) => ({ ...c, mainSize: autoMainSize(c, dimension) }));
     } else {
       setClaim((c) => ({
         ...c,
@@ -111,19 +81,6 @@ export default function App() {
   const onReroll = () =>
     patchClaim({ tilt: randomTilt(), upperOffset: randomOffset(), lowerOffset: randomOffset() });
 
-  const onBackground = (img: LoadedImage | null) => {
-    if (!img) {
-      origFull.current = null;
-      origPreview.current = null;
-      setBgSrc(null);
-      return;
-    }
-    origFull.current = img.full;
-    origPreview.current = img.preview;
-    setBgPos({ x: 50, y: 50 });
-    setImageVersion((v) => v + 1);
-  };
-
   const handleMeasure = useCallback((s: Size) => {
     setGroupSize((p) => (p.w === s.w && p.h === s.h ? p : s));
   }, []);
@@ -135,33 +92,19 @@ export default function App() {
     setClaim((c) => ({ ...c, x: p.x, y: p.y }));
   };
 
-  const warnSafeZone = useMemo(() => {
-    const s = dimension.safe;
-    const eps = 0.002;
-    return (
-      claim.x - ext.hx < s.left - eps ||
-      claim.x + ext.hx > 1 - s.right + eps ||
-      claim.y - ext.hy < s.top - eps ||
-      claim.y + ext.hy > 1 - s.bottom + eps
-    );
-  }, [claim.x, claim.y, ext, dimension]);
+  const warnSafeZone = useMemo(
+    () => violatesSafe({ x: claim.x, y: claim.y }, ext, dimension.safe),
+    [claim.x, claim.y, ext, dimension],
+  );
 
   const handleExport = async () => {
     const stage = stageRef.current;
     if (!stage) return;
     setExporting(true);
     try {
-      const img = imgRef.current;
-      const full = origFull.current;
-      let restore: string | null = null;
-      // Für den Export kurz das voll aufgelöste, gefilterte Bild einsetzen.
-      if (img && full) {
-        restore = img.src;
-        img.src = filterToDataUrl(full, grade);
-        await img.decode().catch(() => {});
-      }
+      const restore = await bg.swapFullForExport();
       await exportStageToJpg(stage, dimension.width, dimension.height, `freshpost-${dimension.key}.jpg`);
-      if (img && restore != null) img.src = restore;
+      restore();
     } finally {
       setExporting(false);
     }
@@ -174,12 +117,12 @@ export default function App() {
           claim={claim}
           dimension={dimension}
           advanced={advanced}
-          hasBackground={bgSrc != null}
+          hasBackground={bg.hasBackground}
           imgStrength={imgStrength}
           grade={grade}
           onClaim={patchClaim}
           onDimension={setDimensionKey}
-          onBackground={onBackground}
+          onBackground={bg.setImage}
           onAdvanced={onAdvanced}
           onReroll={onReroll}
           onImgStrength={setImgStrength}
@@ -195,13 +138,14 @@ export default function App() {
           showSafeZone={!exporting}
           warnSafeZone={warnSafeZone}
           background={
-            bgSrc ? (
-              <BackgroundLayer ref={imgRef} src={bgSrc} pos={bgPos} stageRef={stageRef} onChange={setBgPos} />
+            bg.bgSrc ? (
+              <BackgroundLayer ref={bg.imgRef} src={bg.bgSrc} pos={bg.bgPos} stageRef={stageRef} onChange={bg.setBgPos} />
             ) : null
           }
         >
           <ClaimGroup
             claim={claim}
+            mainSize={effectiveMainSize}
             dimension={dimension}
             stageRef={stageRef}
             onDrag={onDrag}

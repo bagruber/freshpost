@@ -12,17 +12,18 @@ import { useDrag } from "../hooks/useDrag";
 
 type Props = {
   claim: Claim;
+  mainSize: number; // effektive Main-Größe (Standard: auto, Advanced: manuell)
   dimension: Dimension;
   stageRef: React.RefObject<HTMLDivElement | null>;
   onDrag: (raw: { x: number; y: number }) => void;
   onMeasure: (size: { w: number; h: number }) => void;
 };
 
-export function ClaimGroup({ claim, dimension, stageRef, onDrag, onMeasure }: Props) {
+export function ClaimGroup({ claim, mainSize, dimension, stageRef, onDrag, onMeasure }: Props) {
   const groupRef = useRef<HTMLDivElement>(null);
   const onPointerDown = useDrag(stageRef, onDrag);
 
-  const mainPx = claim.mainSize * dimension.width;
+  const mainPx = mainSize * dimension.width;
   const segs = buildSegments(claim, claim.secScale);
 
   useLayoutEffect(() => {

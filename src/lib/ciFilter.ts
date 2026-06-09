@@ -14,8 +14,6 @@ export type Grade = {
 // Empfohlener Voll-Look (entspricht den Reset-Defaults der Vorlage), 0..1.
 export const GRADE_BASE: Grade = { cv: 0.45, wm: 0.2, ro: 0.5, wi: 0.5, rv: 0.5, bd: 0.55 };
 
-export const GRADE_KEYS: (keyof Grade)[] = ["cv", "wm", "ro", "wi", "rv", "bd"];
-
 export function scaleGrade(base: Grade, factor: number): Grade {
   return {
     cv: base.cv * factor,
@@ -25,10 +23,6 @@ export function scaleGrade(base: Grade, factor: number): Grade {
     rv: base.rv * factor,
     bd: base.bd * factor,
   };
-}
-
-export function isNeutral(p: Grade): boolean {
-  return GRADE_KEYS.every((k) => p[k] <= 0.0001);
 }
 
 const cl = (v: number) => (v < 0 ? 0 : v > 255 ? 255 : v);
@@ -70,24 +64,9 @@ function hdiff(a: number, b: number): number {
 }
 const normH = (h: number) => ((Math.round(h) % 360) + 360) % 360;
 
-function buildLUTs(p: Grade) {
-  // Echte Kontrast-S-Kurve an den Rändern (unten dunkler, oben heller),
-  // plus ein sehr subtiler Decontrast in den Mitteltönen (Haut).
-  // f(x) = x + sin(2πx)/(2π) · (−A·edge + C·mid)
-  //   edge = 1 − exp(−22·d²)  → 0 in der Mitte, →1 an den Rändern (S-Kurve)
-  //   mid  = exp(−40·d²)      → schmales Mittenband (minimaler Decontrast)
-  const curvLUT = new Float32Array(256);
-  const A = p.cv * 0.65; // Kontrast-Stärke
-  const C = p.cv * 0.06; // Mid-Decontrast (bewusst klein)
-  for (let i = 0; i < 256; i++) {
-    const x = i / 255;
-    const d = x - 0.5;
-    const sinT = Math.sin(2 * Math.PI * x) / (2 * Math.PI);
-    const edge = 1 - Math.exp(-22 * d * d);
-    const mid = Math.exp(-40 * d * d);
-    curvLUT[i] = Math.max(0, Math.min(1, x + sinT * (-A * edge + C * mid)));
-  }
-
+// Hue-Gewichtstabellen sind konstant (unabhängig von den Slider-Werten) und
+// werden daher genau einmal beim Modul-Load berechnet — nicht pro Filter-Pass.
+function buildHueLUTs() {
   const roseW = new Float32Array(360);
   const windW = new Float32Array(360);
   const riverW = new Float32Array(360);
@@ -104,34 +83,56 @@ function buildLUTs(p: Grade) {
     riverW[i] = gauss(Math.abs(hdiff(i, 200)), 36) * ss(185, 198, i) * (1 - ss(252, 272, i));
     blueW[i] = gauss(Math.abs(hdiff(i, 212)), 36) * ss(168, 183, i) * (1 - ss(245, 262, i));
   }
+  return { roseW, windW, riverW, blueW };
+}
 
-  return { curvLUT, roseW, windW, riverW, blueW };
+const HUE = buildHueLUTs();
+
+// Nur die Kontrastkurve hängt von den Slider-Werten ab → pro Pass berechnet.
+// Echte Kontrast-S-Kurve an den Rändern (unten dunkler, oben heller), plus ein
+// sehr subtiler Decontrast in den Mitteltönen (Haut).
+//   f(x) = x + sin(2πx)/(2π) · (−A·edge + C·mid)
+//   edge = 1 − exp(−22·d²)  → 0 in der Mitte, →1 an den Rändern (S-Kurve)
+//   mid  = exp(−40·d²)      → schmales Mittenband (minimaler Decontrast)
+function buildCurveLUT(cv: number): Float32Array {
+  const curvLUT = new Float32Array(256);
+  const A = cv * 0.65; // Kontrast-Stärke
+  const C = cv * 0.06; // Mid-Decontrast (bewusst klein)
+  for (let i = 0; i < 256; i++) {
+    const x = i / 255;
+    const d = x - 0.5;
+    const sinT = Math.sin(2 * Math.PI * x) / (2 * Math.PI);
+    const edge = 1 - Math.exp(-22 * d * d);
+    const mid = Math.exp(-40 * d * d);
+    curvLUT[i] = Math.max(0, Math.min(1, x + sinT * (-A * edge + C * mid)));
+  }
+  return curvLUT;
 }
 
 // Filtert eine ImageData-Quelle und schreibt in einen neuen Uint8ClampedArray.
 export function filterImageData(src: ImageData, p: Grade): ImageData {
-  const lut = buildLUTs(p);
+  const curvLUT = buildCurveLUT(p.cv);
   const s0 = src.data;
   const out = new Uint8ClampedArray(s0.length);
 
   for (let i = 0; i < s0.length; i += 4) {
     let [h, s, v] = rgbToHsv(s0[i], s0[i + 1], s0[i + 2]);
 
-    v = lut.curvLUT[Math.min(255, Math.round(v * 255))];
+    v = curvLUT[Math.min(255, Math.round(v * 255))];
     let hi = normH(h);
 
     if (p.ro > 0) {
       const act = soft(0.6, 0.76, s);
-      const w = lut.roseW[hi] * p.ro * act;
+      const w = HUE.roseW[hi] * p.ro * act;
       if (w > 0.002) {
         h += hdiff(h, 340) * w * 0.72;
-        s = Math.min(1, s + (1 - s) * lut.roseW[hi] * p.ro * act * 0.35);
+        s = Math.min(1, s + (1 - s) * HUE.roseW[hi] * p.ro * act * 0.35);
         hi = normH(h);
       }
     }
     if (p.wi > 0) {
       const act = soft(0.72, 0.86, v) * soft(0.52, 0.66, s);
-      const w = lut.windW[hi] * p.wi * act;
+      const w = HUE.windW[hi] * p.wi * act;
       if (w > 0.002) {
         h += hdiff(h, 175) * w * 0.7;
         s = Math.min(1, s + (1 - s) * w * 0.3);
@@ -140,7 +141,7 @@ export function filterImageData(src: ImageData, p: Grade): ImageData {
     }
     if (p.rv > 0) {
       const act = soft(0.65, 0.5, v);
-      const w = lut.riverW[hi] * p.rv * act;
+      const w = HUE.riverW[hi] * p.rv * act;
       if (w > 0.002) {
         h += hdiff(h, 200) * w * 0.68;
         s = s + (0.5 - s) * w * 0.42;
@@ -148,7 +149,7 @@ export function filterImageData(src: ImageData, p: Grade): ImageData {
       }
     }
     if (p.bd > 0) {
-      const bw = lut.blueW[hi];
+      const bw = HUE.blueW[hi];
       const satProtect = 1 - soft(0.62, 0.9, s);
       const desatW = bw * p.bd * satProtect;
       if (desatW > 0.002) s = Math.max(0, s * (1 - desatW * 0.65));
@@ -171,12 +172,16 @@ export function filterImageData(src: ImageData, p: Grade): ImageData {
   return new ImageData(out, src.width, src.height);
 }
 
+// Ein einziger wiederverwendeter Offscreen-Canvas (Live-Vorschau läuft pro
+// rAF-Frame — keine Allokation je Aufruf).
+let scratch: HTMLCanvasElement | null = null;
+
 // Filtert und gibt eine JPEG-Data-URL zurück (für Anzeige/Export).
 export function filterToDataUrl(src: ImageData, p: Grade): string {
   const filtered = filterImageData(src, p);
-  const canvas = document.createElement("canvas");
-  canvas.width = filtered.width;
-  canvas.height = filtered.height;
-  canvas.getContext("2d")!.putImageData(filtered, 0, 0);
-  return canvas.toDataURL("image/jpeg", 0.92);
+  if (!scratch) scratch = document.createElement("canvas");
+  scratch.width = filtered.width;
+  scratch.height = filtered.height;
+  scratch.getContext("2d")!.putImageData(filtered, 0, 0);
+  return scratch.toDataURL("image/jpeg", 0.92);
 }
