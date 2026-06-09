@@ -17,7 +17,8 @@ export type Claim = {
   mainStyle: StickerStyle;
   lowerStyle: StickerStyle;
   tilt: number; // Grad, Gruppen-Neigung (-9..9)
-  mainSize: number; // Bruchteil der Stage-Breite (Main-Schrift)
+  mainSize: number; // Bruchteil der Stage-Breite (Main-Schrift, Advanced)
+  stdScale: number; // Standard-Mode: Faktor auf die Auto-Größe (overall Textgröße)
   secScale: number; // Verhältnis Oben/Unten zu Main, ≤ 2/3
   upperOffset: number; // horizontaler Versatz Oben, Bruchteil der Main-Breite
   lowerOffset: number; // horizontaler Versatz Unten, Bruchteil der Main-Breite

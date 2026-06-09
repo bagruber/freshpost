@@ -6,7 +6,7 @@ const base: Claim = {
   upper: "", main: "", lower: "",
   capUpper: true, capMain: true, capLower: true,
   upperStyle: "white", mainStyle: "rose", lowerStyle: "white",
-  tilt: 0, mainSize: 0.11, secScale: 2 / 3,
+  tilt: 0, mainSize: 0.11, stdScale: 1, secScale: 2 / 3,
   upperOffset: 0, lowerOffset: 0, x: 0.5, y: 0.5,
 };
 

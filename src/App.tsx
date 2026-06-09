@@ -9,6 +9,7 @@ import { DEFAULT_DIMENSION, getDimension } from "./lib/dimensions";
 import { autoMainSize } from "./lib/layout";
 import { extents, clampToCanvas, violatesSafe, type Size, type Pos } from "./lib/geometry";
 import { exportStageToJpg } from "./lib/exportImage";
+import { loadBackgroundImage, IMAGE_ERROR_TEXT, ACCEPTED_TYPES } from "./lib/image";
 import { SEC_MAX, secondaryStyle, type Claim } from "./lib/types";
 import { GRADE_BASE, scaleGrade, type Grade } from "./lib/ciFilter";
 import { RANDOM, DEFAULTS } from "./lib/config";
@@ -25,12 +26,15 @@ export default function App() {
   const [groupSize, setGroupSize] = useState<Size>({ w: 0, h: 0 });
   const [imgStrength, setImgStrength] = useState(DEFAULTS.imgStrength); // Standard: ein CI-Look-Regler
   const [gradeAdv, setGradeAdv] = useState<Grade>(() => scaleGrade(GRADE_BASE, DEFAULTS.gradeFactor));
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [claim, setClaim] = useState<Claim>({
     upper: "", main: "", lower: "",
     capUpper: true, capMain: true, capLower: true,
     upperStyle: "white", mainStyle: "rose", lowerStyle: "white",
     tilt: randomTilt(),
     mainSize: DEFAULTS.mainSize,
+    stdScale: DEFAULTS.stdScale,
     secScale: SEC_MAX,
     upperOffset: randomOffset(),
     lowerOffset: randomOffset(),
@@ -56,9 +60,9 @@ export default function App() {
   // Effektive Main-Größe wird abgeleitet (nicht gespeichert): Standard = auto
   // an die Safety-Zone, Advanced = manueller Wert.
   const effectiveMainSize = useMemo(
-    () => (advanced ? claim.mainSize : autoMainSize(claim, dimension)),
+    () => (advanced ? claim.mainSize : autoMainSize(claim, dimension) * claim.stdScale),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [advanced, claim.mainSize, claim.upper, claim.main, claim.lower,
+    [advanced, claim.mainSize, claim.stdScale, claim.upper, claim.main, claim.lower,
      claim.capUpper, claim.capMain, claim.capLower, dimension, fontsReady],
   );
 
@@ -69,7 +73,7 @@ export default function App() {
     if (on) {
       // Beim Wechsel in Advanced die Regler von den Standard-Werten übernehmen.
       setGradeAdv(scaleGrade(GRADE_BASE, imgStrength / 100));
-      setClaim((c) => ({ ...c, mainSize: autoMainSize(c, dimension) }));
+      setClaim((c) => ({ ...c, mainSize: autoMainSize(c, dimension) * c.stdScale }));
     } else {
       setClaim((c) => ({
         ...c,
@@ -83,6 +87,16 @@ export default function App() {
 
   const onReroll = () =>
     patchClaim({ tilt: randomTilt(), upperOffset: randomOffset(), lowerOffset: randomOffset() });
+
+  const handleFile = async (file?: File) => {
+    if (!file) return;
+    try {
+      setImage(await loadBackgroundImage(file));
+      setUploadError(null);
+    } catch (e) {
+      setUploadError(IMAGE_ERROR_TEXT[e as keyof typeof IMAGE_ERROR_TEXT] ?? "Fehler");
+    }
+  };
 
   const handleMeasure = useCallback((s: Size) => {
     setGroupSize((p) => (p.w === s.w && p.h === s.h ? p : s));
@@ -130,16 +144,32 @@ export default function App() {
           hasBackground={hasBackground}
           imgStrength={imgStrength}
           grade={grade}
+          uploadError={uploadError}
           onClaim={patchClaim}
           onDimension={setDimensionKey}
-          onBackground={setImage}
+          onFile={handleFile}
+          onClearBackground={() => setImage(null)}
           onAdvanced={onAdvanced}
           onReroll={onReroll}
           onImgStrength={setImgStrength}
           onGrade={(key, v) => setGradeAdv((g) => ({ ...g, [key]: v }))}
         />
       </BottomSheet>
-      <main className="canvas-area">
+      <main
+        className="canvas-area"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          e.preventDefault();
+          handleFile(e.dataTransfer.files?.[0]);
+        }}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ACCEPTED_TYPES.join(",")}
+          hidden
+          onChange={(e) => handleFile(e.target.files?.[0])}
+        />
         <Stage
           ref={stageRef}
           dimension={dimension}
@@ -170,6 +200,13 @@ export default function App() {
             onMeasure={handleMeasure}
           />
         </Stage>
+        {!hasBackground && (
+          <button className="canvas-dropzone" onClick={() => fileInputRef.current?.click()}>
+            <span className="dz-plus">＋</span>
+            Foto hinzufügen
+            <span className="dz-hint">klicken oder hierher ziehen</span>
+          </button>
+        )}
       </main>
     </div>
   );

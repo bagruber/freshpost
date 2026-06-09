@@ -143,7 +143,45 @@ body {
   align-items: center;
   justify-content: center;
 }
-.stage-scaler { position: relative; }
+/* Sichtbarer Canvas-Rahmen: heller Ring + Schatten heben das Canvas vom
+   dunklen Hintergrund ab. */
+.stage-scaler {
+  position: relative;
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.22), 0 18px 50px rgba(0, 0, 0, 0.55);
+}
+
+.canvas-dropzone {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-4) var(--space-6);
+  background: color-mix(in srgb, var(--fresh-dark-b) 82%, transparent);
+  border: 1px dashed var(--color-border-glass);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+.canvas-dropzone:hover { color: var(--color-text-primary); border-color: var(--fresh-rose); }
+.dz-plus { font-size: 1.7rem; line-height: 1; color: var(--fresh-rose); }
+.dz-hint {
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 0.7rem;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--color-text-tertiary);
+}
 
 .stage {
   position: absolute;
@@ -241,8 +279,10 @@ body {
     grid-template-columns: 1fr;
     height: 100%;
   }
-  /* Canvas etwas kleiner, damit über dem Sheet mehr Luft bleibt. */
-  .canvas-area { padding: var(--space-4) var(--space-5) 112px; }
+  /* Canvas maximal nutzen und nach oben ausrichten, damit bei offenem Sheet
+     möglichst viel sichtbar bleibt. Platz unten = Peek-Streifen. */
+  .canvas-area { padding: var(--space-2) var(--space-2) 134px; }
+  .stage-wrap { align-items: flex-start; }
 
   .controls-shell.as-sheet {
     position: fixed;

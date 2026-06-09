@@ -1,10 +1,9 @@
-import { useRef } from "react";
 import type { Claim, StickerStyle } from "../lib/types";
 import { STYLES, SEC_MAX, boundaryOk, secondaryStyle } from "../lib/types";
 import type { Grade } from "../lib/ciFilter";
 import { SLIDER } from "../lib/config";
 import { DIMENSIONS, type Dimension } from "../lib/dimensions";
-import { loadBackgroundImage, IMAGE_ERROR_TEXT, ACCEPTED_TYPES, type LoadedImage } from "../lib/image";
+import { ACCEPTED_TYPES } from "../lib/image";
 import { Slider, Toggle } from "./inputs";
 
 type Props = {
@@ -14,9 +13,11 @@ type Props = {
   hasBackground: boolean;
   imgStrength: number; // 0..100 (Standard-Modus)
   grade: Grade; // Advanced-Werte 0..1
+  uploadError: string | null;
   onClaim: (patch: Partial<Claim>) => void;
   onDimension: (key: string) => void;
-  onBackground: (img: LoadedImage | null) => void;
+  onFile: (file: File | undefined) => void;
+  onClearBackground: () => void;
   onAdvanced: (on: boolean) => void;
   onReroll: () => void;
   onImgStrength: (v: number) => void;
@@ -56,27 +57,14 @@ function ColorSelect({
 
 export function Controls(props: Props) {
   const {
-    claim, dimension, advanced, hasBackground, imgStrength, grade,
-    onClaim, onDimension, onBackground, onAdvanced, onReroll,
+    claim, dimension, advanced, hasBackground, imgStrength, grade, uploadError,
+    onClaim, onDimension, onFile, onClearBackground, onAdvanced, onReroll,
     onImgStrength, onGrade,
   } = props;
 
-  const errRef = useRef<HTMLParagraphElement>(null);
   const noMain = claim.main.trim().length === 0;
   const hasUpper = claim.upper.trim().length > 0;
   const hasLower = claim.lower.trim().length > 0;
-
-  const handleFile = async (file: File | undefined) => {
-    if (!file) return;
-    try {
-      onBackground(await loadBackgroundImage(file));
-      if (errRef.current) errRef.current.textContent = "";
-    } catch (e) {
-      if (errRef.current)
-        errRef.current.textContent =
-          IMAGE_ERROR_TEXT[e as keyof typeof IMAGE_ERROR_TEXT] ?? "Fehler";
-    }
-  };
 
   const setMainStyle = (s: StickerStyle) => {
     const patch: Partial<Claim> = { mainStyle: s };
@@ -117,6 +105,12 @@ export function Controls(props: Props) {
       </label>
 
       {!advanced && (
+        <Slider label={`Textgröße ${Math.round(claim.stdScale * 100)}`}
+          value={Math.round(claim.stdScale * 100)} {...SLIDER.stdSize}
+          onChange={(v) => onClaim({ stdScale: v / 100 })} />
+      )}
+
+      {!advanced && (
         <label className="field">
           <span>Farbe</span>
           <select value={claim.mainStyle} onChange={(e) => setMainStyle(e.target.value as StickerStyle)}>
@@ -129,10 +123,12 @@ export function Controls(props: Props) {
 
       <label className="field">
         <span>Hintergrundbild</span>
-        <input type="file" accept={ACCEPTED_TYPES.join(",")} onChange={(e) => handleFile(e.target.files?.[0])} />
+        <input type="file" accept={ACCEPTED_TYPES.join(",")} onChange={(e) => onFile(e.target.files?.[0])} />
       </label>
-      <button className="btn-secondary" onClick={() => onBackground(null)}>Bild entfernen</button>
-      <p ref={errRef} className="error" role="alert" />
+      {hasBackground && (
+        <button className="btn-secondary" onClick={onClearBackground}>Bild entfernen</button>
+      )}
+      {uploadError && <p className="error" role="alert">{uploadError}</p>}
 
       {hasBackground && !advanced && (
         <Slider label={`CI-Look ${imgStrength}`} value={imgStrength} min={0} max={100} step={1}
