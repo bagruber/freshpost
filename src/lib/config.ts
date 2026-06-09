@@ -1,19 +1,19 @@
 // Zentrale Design-Stellschrauben, die wir beim Iterieren am häufigsten anfassen.
 
-// Zufallsbereiche für „Look würfeln".
+// Zufallsbereiche für „Look würfeln" — voller Neigungsbereich, kräftiger Versatz.
 export const RANDOM = {
-  tiltDeg: 4, // ±4°
-  offset: 0.22, // ±0.22 der Main-Breite
+  tiltDeg: 9, // ±9°
+  offset: 0.3, // ±0.30 der Main-Breite
 };
 
 // Auto-Größe (Standard-Mode): erlaubter Bruchteil der Stage-Breite.
 export const AUTO_SIZE_CLAMP = { min: 0.05, max: 0.16 };
 
-// Slider-Bereiche im Advanced-Mode.
+// Slider-Bereiche im Advanced-Mode (weiter als der Zufallsbereich).
 export const SLIDER = {
   mainSize: { min: 4, max: 18, step: 0.5 }, // in % der Breite (Wert ×100)
-  tiltDeg: { min: -9, max: 9, step: 0.1 },
-  offset: { min: -35, max: 35, step: 1 }, // in % der Main-Breite
+  tiltDeg: { min: -12, max: 12, step: 0.1 },
+  offset: { min: -50, max: 50, step: 1 }, // in % der Main-Breite
   secScaleMin: 25, // Max kommt aus SEC_MAX
 };
 

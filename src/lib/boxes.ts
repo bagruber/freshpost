@@ -22,10 +22,12 @@ export type SegBox = {
 };
 
 // Box-Geometrie (relativ zur Schriftgröße / em).
+// Da Hintergründe und Text in getrennten z-Ebenen liegen (siehe ClaimGroup),
+// darf die Within-Überlappung beliebig groß sein, ohne Text zu verdecken.
 export const PAD_X = 0.42; // je Seite
 export const PAD_Y = 0.16; // oben/unten
-export const LINE_TIGHT = 0.84; // enge Zeilenhöhe je Box
-export const OVERLAP_WITHIN = 0.22; // Zeilen einer Sektion (nur im Padding, kein Textschnitt)
+export const LINE_TIGHT = 0.9; // Zeilenhöhe je Box
+export const OVERLAP_WITHIN = 0.32; // Zeilen einer Sektion (dichtes Verschmelzen)
 export const OVERLAP_BETWEEN = 0.1; // leichte Annäherung an Sektionsgrenzen
 export const BOX_W_PAD = 2 * PAD_X;
 

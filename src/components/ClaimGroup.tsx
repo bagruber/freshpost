@@ -65,15 +65,17 @@ export function ClaimGroup({ claim, mainSize, dimension, stageRef, onDrag, onMea
             {seg.lines.map((line, j) => (
               <div
                 key={j}
-                className="claim-box"
+                className="claim-line"
                 style={{
-                  background: STYLE_BG[seg.style],
                   color: STYLE_FG[seg.style],
                   padding: `${PAD_Y}em ${PAD_X}em`,
                   marginTop: j === 0 ? 0 : `-${OVERLAP_WITHIN}em`,
                 }}
               >
-                {line}
+                {/* Hintergrund (z0) liegt unter ALLEM Text (z1) der Sektion —
+                    so kann keine Box fremden Text verdecken. */}
+                <span className="claim-bg" style={{ background: STYLE_BG[seg.style] }} />
+                <span className="claim-fg">{line}</span>
               </div>
             ))}
           </div>

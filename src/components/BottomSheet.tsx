@@ -6,10 +6,12 @@ import { usePointerDrag } from "../hooks/usePointerDrag";
 // rendert es die Controls einfach als Seitenspalte — die CSS-Klasse steuert das.
 
 const MOBILE_QUERY = "(max-width: 760px)";
-const PEEK = 76; // sichtbarer Streifen im geschlossenen Zustand (px)
+const PEEK = 108; // sichtbarer Streifen im geschlossenen Zustand (px): Griff + Header
 const SHEET_VH = 0.72; // Sheet-Höhe relativ zur Viewport-Höhe
 
-export function BottomSheet({ warn, children }: { warn: boolean; children: ReactNode }) {
+type Props = { warn: boolean; header: ReactNode; children: ReactNode };
+
+export function BottomSheet({ warn, header, children }: Props) {
   const [isMobile, setIsMobile] = useState(() => window.matchMedia(MOBILE_QUERY).matches);
   const [open, setOpen] = useState(false);
   const [drag, setDrag] = useState<number | null>(null);
@@ -55,6 +57,10 @@ export function BottomSheet({ warn, children }: { warn: boolean; children: React
       )}
       <div className="sheet-handle" onPointerDown={onDown}>
         <span />
+      </div>
+      <div className="sheet-header">
+        <span className="sheet-hint">Hier bearbeiten</span>
+        {header}
       </div>
       <div className="controls-scroll">{children}</div>
     </div>

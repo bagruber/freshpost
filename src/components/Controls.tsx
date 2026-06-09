@@ -21,8 +21,6 @@ type Props = {
   onReroll: () => void;
   onImgStrength: (v: number) => void;
   onGrade: (key: keyof Grade, v: number) => void;
-  onExport: () => void;
-  exporting: boolean;
 };
 
 const GRADE_FIELDS: { key: keyof Grade; label: string }[] = [
@@ -60,7 +58,7 @@ export function Controls(props: Props) {
   const {
     claim, dimension, advanced, hasBackground, imgStrength, grade,
     onClaim, onDimension, onBackground, onAdvanced, onReroll,
-    onImgStrength, onGrade, onExport, exporting,
+    onImgStrength, onGrade,
   } = props;
 
   const errRef = useRef<HTMLParagraphElement>(null);
@@ -196,10 +194,6 @@ export function Controls(props: Props) {
           )}
         </div>
       )}
-
-      <button className="btn-primary" onClick={onExport} disabled={exporting}>
-        {exporting ? "Exportiere…" : "Als JPG exportieren"}
-      </button>
     </aside>
   );
 }

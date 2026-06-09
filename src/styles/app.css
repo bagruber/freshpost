@@ -39,6 +39,17 @@ body {
 .controls-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 .sheet-handle { display: none; }
 
+/* Header oben im Sheet/Sidebar: Export prominent + Bearbeiten-Hinweis. */
+.sheet-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+.sheet-export { flex: 1; margin: 0; }
+.sheet-hint { display: none; } /* nur mobil sichtbar */
+
 .controls {
   padding: var(--space-5);
   display: flex;
@@ -174,18 +185,31 @@ body {
 }
 .claim-group:active { cursor: grabbing; }
 
-/* Sektion: Wrapper um die Zeilen-Boxen. Schatten als drop-shadow um die
-   gemeinsame Silhouette → ein Schatten pro Sektion, keiner innerhalb. */
+/* Sektion: Wrapper um die Zeilen. Eigener Stacking-Context (isolation), damit
+   alle Hintergründe (z0) unter allem Text (z1) liegen. Schatten als drop-shadow
+   um die gemeinsame Silhouette → ein Schatten pro Sektion, keiner innerhalb. */
 .claim-seg {
   display: flex;
   flex-direction: column;
   align-items: center;
+  isolation: isolate;
   filter: drop-shadow(0 0.06em 0.16em rgba(0, 0, 0, 0.32));
 }
 
-.claim-box {
+.claim-line {
+  position: relative;
   white-space: nowrap; /* echte Umbrüche nur über die Eingabe */
   border-radius: var(--radius-sm);
+}
+.claim-bg {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  z-index: 0;
+}
+.claim-fg {
+  position: relative;
+  z-index: 1;
 }
 
 .grade-block {
@@ -241,5 +265,15 @@ body {
     height: 5px;
     border-radius: 999px;
     background: var(--color-border-glass);
+  }
+
+  /* Mobil: Tool-Name weg, stattdessen Bearbeiten-Hinweis im Header. */
+  .controls-title { display: none; }
+  .sheet-hint {
+    display: inline;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--color-text-tertiary);
+    white-space: nowrap;
   }
 }

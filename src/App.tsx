@@ -115,7 +115,14 @@ export default function App() {
 
   return (
     <div className="app">
-      <BottomSheet warn={warnSafeZone}>
+      <BottomSheet
+        warn={warnSafeZone}
+        header={
+          <button className="btn-primary sheet-export" onClick={handleExport} disabled={exporting}>
+            {exporting ? "Exportiere…" : "Als JPG exportieren"}
+          </button>
+        }
+      >
         <Controls
           claim={claim}
           dimension={dimension}
@@ -130,8 +137,6 @@ export default function App() {
           onReroll={onReroll}
           onImgStrength={setImgStrength}
           onGrade={(key, v) => setGradeAdv((g) => ({ ...g, [key]: v }))}
-          onExport={handleExport}
-          exporting={exporting}
         />
       </BottomSheet>
       <main className="canvas-area">
