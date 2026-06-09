@@ -73,6 +73,27 @@ body {
   text-transform: lowercase;
 }
 
+/* Foto/Illustration-Umschalter (Segmented Control). */
+.mode-toggle {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--color-bg-elevated);
+  border-radius: var(--radius-sm);
+}
+.mode-toggle button {
+  flex: 1;
+  padding: var(--space-2);
+  border: none;
+  border-radius: calc(var(--radius-sm) - 1px);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.mode-toggle button.active { background: var(--fresh-rose); color: var(--color-text-on-rose); }
+
 .field { display: flex; flex-direction: column; gap: var(--space-1); font-size: 0.85rem; }
 .field > span { color: var(--color-text-secondary); }
 .field-inline { display: flex; align-items: center; gap: var(--space-2); font-size: 0.85rem; }
@@ -191,6 +212,24 @@ body {
   overflow: hidden;
   background-color: var(--color-bg-page);
 }
+
+/* Illustrations-Mode: dunkler River-Hintergrund (Muster folgt später). */
+.river-bg {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 35%, var(--fresh-river), var(--fresh-dark-c));
+}
+
+/* Ziehbare Illustration mit Sticker-artigem Schatten. */
+.illu {
+  position: absolute;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  filter: drop-shadow(0 10px 26px rgba(0, 0, 0, 0.45));
+}
+.illu:active { cursor: grabbing; }
+.illu img { width: 100%; height: auto; display: block; pointer-events: none; }
 
 .bg-image {
   position: absolute;

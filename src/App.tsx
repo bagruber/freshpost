@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Stage } from "./components/Stage";
 import { ClaimGroup } from "./components/ClaimGroup";
 import { BackgroundLayer } from "./components/BackgroundLayer";
+import { IllustrationLayer } from "./components/IllustrationLayer";
 import { Controls } from "./components/Controls";
 import { BottomSheet } from "./components/BottomSheet";
 import { useBackgroundImage } from "./hooks/useBackgroundImage";
@@ -10,7 +11,8 @@ import { autoMainSize } from "./lib/layout";
 import { extents, clampToCanvas, violatesSafe, type Size, type Pos } from "./lib/geometry";
 import { exportStageToJpg } from "./lib/exportImage";
 import { loadBackgroundImage, IMAGE_ERROR_TEXT, ACCEPTED_TYPES } from "./lib/image";
-import { SEC_MAX, secondaryStyle, type Claim } from "./lib/types";
+import { loadIllustration, illuSrc, ILLU_ERROR_TEXT, ILLU_TYPES, type Illu } from "./lib/illustration";
+import { SEC_MAX, secondaryStyle, type Claim, type Mode } from "./lib/types";
 import { GRADE_BASE, scaleGrade, type Grade } from "./lib/ciFilter";
 import { RANDOM, DEFAULTS } from "./lib/config";
 
@@ -28,6 +30,10 @@ export default function App() {
   const [gradeAdv, setGradeAdv] = useState<Grade>(() => scaleGrade(GRADE_BASE, DEFAULTS.gradeFactor));
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [mode, setMode] = useState<Mode>("photo");
+  const [illu, setIllu] = useState<Illu | null>(null);
+  const [recolor, setRecolor] = useState(true);
+  const [illuSize, setIlluSize] = useState<Size>({ w: 0, h: 0 });
   const [claim, setClaim] = useState<Claim>({
     upper: "", main: "", lower: "",
     capUpper: true, capMain: true, capLower: true,
@@ -91,12 +97,27 @@ export default function App() {
   const handleFile = async (file?: File) => {
     if (!file) return;
     try {
-      setImage(await loadBackgroundImage(file));
+      if (mode === "photo") {
+        setImage(await loadBackgroundImage(file));
+      } else {
+        const loaded = await loadIllustration(file);
+        setIllu({ ...loaded, x: 0.5, y: 0.5, scale: DEFAULTS.illuScale });
+      }
       setUploadError(null);
     } catch (e) {
-      setUploadError(IMAGE_ERROR_TEXT[e as keyof typeof IMAGE_ERROR_TEXT] ?? "Fehler");
+      const table = mode === "photo" ? IMAGE_ERROR_TEXT : ILLU_ERROR_TEXT;
+      setUploadError(table[e as keyof typeof table] ?? "Fehler");
     }
   };
+
+  const illuDisplaySrc = useMemo(() => (illu ? illuSrc(illu, recolor) : null), [illu, recolor]);
+  const illuExt = useMemo(() => extents(illuSize, 0, dimension), [illuSize, dimension]);
+  const onIlluDrag = (raw: Pos) => {
+    const p = clampToCanvas(raw, illuExt);
+    setIllu((i) => (i ? { ...i, x: p.x, y: p.y } : i));
+  };
+
+  const hasContent = mode === "photo" ? hasBackground : illu != null;
 
   const handleMeasure = useCallback((s: Size) => {
     setGroupSize((p) => (p.w === s.w && p.h === s.h ? p : s));
@@ -141,14 +162,23 @@ export default function App() {
           claim={claim}
           dimension={dimension}
           advanced={advanced}
+          mode={mode}
           hasBackground={hasBackground}
+          hasIllu={illu != null}
+          illuScale={illu?.scale ?? null}
+          illuIsSvg={illu?.isSvg ?? false}
+          recolor={recolor}
           imgStrength={imgStrength}
           grade={grade}
           uploadError={uploadError}
+          onMode={setMode}
           onClaim={patchClaim}
           onDimension={setDimensionKey}
           onFile={handleFile}
           onClearBackground={() => setImage(null)}
+          onClearIllu={() => setIllu(null)}
+          onIlluScale={(v) => setIllu((i) => (i ? { ...i, scale: v } : i))}
+          onRecolor={setRecolor}
           onAdvanced={onAdvanced}
           onReroll={onReroll}
           onImgStrength={setImgStrength}
@@ -166,7 +196,7 @@ export default function App() {
         <input
           ref={fileInputRef}
           type="file"
-          accept={ACCEPTED_TYPES.join(",")}
+          accept={(mode === "photo" ? ACCEPTED_TYPES : ILLU_TYPES).join(",")}
           hidden
           onChange={(e) => handleFile(e.target.files?.[0])}
         />
@@ -176,7 +206,9 @@ export default function App() {
           showSafeZone={!exporting}
           warnSafeZone={warnSafeZone}
           background={
-            bgSrc ? (
+            mode === "illustration" ? (
+              <div className="river-bg" />
+            ) : bgSrc ? (
               <BackgroundLayer
                 src={bgSrc}
                 imgRef={imgRef}
@@ -191,6 +223,18 @@ export default function App() {
             ) : null
           }
         >
+          {mode === "illustration" && illu && illuDisplaySrc && (
+            <IllustrationLayer
+              src={illuDisplaySrc}
+              x={illu.x}
+              y={illu.y}
+              scale={illu.scale}
+              dimension={dimension}
+              stageRef={stageRef}
+              onDrag={onIlluDrag}
+              onMeasure={setIlluSize}
+            />
+          )}
           <ClaimGroup
             claim={claim}
             mainSize={effectiveMainSize}
@@ -200,10 +244,10 @@ export default function App() {
             onMeasure={handleMeasure}
           />
         </Stage>
-        {!hasBackground && (
+        {!hasContent && (
           <button className="canvas-dropzone" onClick={() => fileInputRef.current?.click()}>
             <span className="dz-plus">＋</span>
-            Foto hinzufügen
+            {mode === "photo" ? "Foto hinzufügen" : "Illustration hinzufügen"}
             <span className="dz-hint">klicken oder hierher ziehen</span>
           </button>
         )}

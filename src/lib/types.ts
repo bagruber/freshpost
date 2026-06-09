@@ -1,3 +1,5 @@
+export type Mode = "photo" | "illustration";
+
 export type StickerStyle =
   | "rose"
   | "wind"

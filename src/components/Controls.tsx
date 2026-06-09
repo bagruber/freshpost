@@ -1,23 +1,33 @@
-import type { Claim, StickerStyle } from "../lib/types";
+import type { Claim, StickerStyle, Mode } from "../lib/types";
 import { STYLES, SEC_MAX, boundaryOk, secondaryStyle } from "../lib/types";
 import type { Grade } from "../lib/ciFilter";
 import { SLIDER } from "../lib/config";
 import { DIMENSIONS, type Dimension } from "../lib/dimensions";
 import { ACCEPTED_TYPES } from "../lib/image";
+import { ILLU_TYPES } from "../lib/illustration";
 import { Slider, Toggle } from "./inputs";
 
 type Props = {
   claim: Claim;
   dimension: Dimension;
   advanced: boolean;
+  mode: Mode;
   hasBackground: boolean;
+  hasIllu: boolean;
+  illuScale: number | null;
+  illuIsSvg: boolean;
+  recolor: boolean;
   imgStrength: number; // 0..100 (Standard-Modus)
   grade: Grade; // Advanced-Werte 0..1
   uploadError: string | null;
+  onMode: (m: Mode) => void;
   onClaim: (patch: Partial<Claim>) => void;
   onDimension: (key: string) => void;
   onFile: (file: File | undefined) => void;
   onClearBackground: () => void;
+  onClearIllu: () => void;
+  onIlluScale: (v: number) => void;
+  onRecolor: (on: boolean) => void;
   onAdvanced: (on: boolean) => void;
   onReroll: () => void;
   onImgStrength: (v: number) => void;
@@ -57,10 +67,12 @@ function ColorSelect({
 
 export function Controls(props: Props) {
   const {
-    claim, dimension, advanced, hasBackground, imgStrength, grade, uploadError,
-    onClaim, onDimension, onFile, onClearBackground, onAdvanced, onReroll,
-    onImgStrength, onGrade,
+    claim, dimension, advanced, mode, hasBackground, hasIllu, illuScale, illuIsSvg, recolor,
+    imgStrength, grade, uploadError,
+    onMode, onClaim, onDimension, onFile, onClearBackground, onClearIllu, onIlluScale, onRecolor,
+    onAdvanced, onReroll, onImgStrength, onGrade,
   } = props;
+  const isPhoto = mode === "photo";
 
   const noMain = claim.main.trim().length === 0;
   const hasUpper = claim.upper.trim().length > 0;
@@ -76,6 +88,11 @@ export function Controls(props: Props) {
   return (
     <aside className="controls">
       <h1 className="controls-title">freshpost</h1>
+
+      <div className="mode-toggle">
+        <button className={isPhoto ? "active" : ""} onClick={() => onMode("photo")}>Foto</button>
+        <button className={!isPhoto ? "active" : ""} onClick={() => onMode("illustration")}>Illustration</button>
+      </div>
 
       <label className="field">
         <span>Oben (optional)</span>
@@ -122,17 +139,27 @@ export function Controls(props: Props) {
       )}
 
       <label className="field">
-        <span>Hintergrundbild</span>
-        <input type="file" accept={ACCEPTED_TYPES.join(",")} onChange={(e) => onFile(e.target.files?.[0])} />
+        <span>{isPhoto ? "Hintergrundbild" : "Illustration (SVG/PNG)"}</span>
+        <input type="file" accept={(isPhoto ? ACCEPTED_TYPES : ILLU_TYPES).join(",")}
+          onChange={(e) => onFile(e.target.files?.[0])} />
       </label>
-      {hasBackground && (
+      {isPhoto && hasBackground && (
         <button className="btn-secondary" onClick={onClearBackground}>Bild entfernen</button>
+      )}
+      {!isPhoto && hasIllu && (
+        <button className="btn-secondary" onClick={onClearIllu}>Illustration entfernen</button>
       )}
       {uploadError && <p className="error" role="alert">{uploadError}</p>}
 
-      {hasBackground && !advanced && (
+      {isPhoto && hasBackground && !advanced && (
         <Slider label={`CI-Look ${imgStrength}`} value={imgStrength} min={0} max={100} step={1}
           onChange={onImgStrength} />
+      )}
+
+      {!isPhoto && hasIllu && illuScale != null && (
+        <Slider label={`Illustrationsgröße ${Math.round(illuScale * 100)}`}
+          value={Math.round(illuScale * 100)} {...SLIDER.illuSize}
+          onChange={(v) => onIlluScale(v / 100)} />
       )}
 
       <button className="btn-secondary" onClick={onReroll}>Look würfeln</button>
@@ -178,7 +205,11 @@ export function Controls(props: Props) {
             <Toggle label="Unten GROSS" checked={claim.capLower} onChange={(v) => onClaim({ capLower: v })} />
           </div>
 
-          {hasBackground && (
+          {!isPhoto && hasIllu && illuIsSvg && (
+            <Toggle label="CI-Recolor (SVG)" checked={recolor} onChange={onRecolor} />
+          )}
+
+          {isPhoto && hasBackground && (
             <div className="grade-block">
               <p className="grade-title">Bildlook</p>
               {GRADE_FIELDS.map((f) => (

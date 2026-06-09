@@ -15,6 +15,7 @@ export const SLIDER = {
   mainSize: { min: 4, max: 18, step: 0.5 }, // Advanced: in % der Breite (Wert ×100)
   tiltDeg: { min: -12, max: 12, step: 0.1 },
   offset: { min: -50, max: 50, step: 1 }, // in % der Main-Breite
+  illuSize: { min: 15, max: 95, step: 1 }, // Illustrationsbreite in % der Stage
   secScaleMin: 25, // Max kommt aus SEC_MAX
 };
 
@@ -22,6 +23,7 @@ export const SLIDER = {
 export const DEFAULTS = {
   mainSize: 0.11,
   stdScale: 1,
+  illuScale: 0.45,
   claimY: 0.62,
   imgStrength: 50, // Standard CI-Look-Regler (0..100)
   gradeFactor: 0.5, // Advanced-Grade initial = GRADE_BASE × 0.5
