@@ -36,7 +36,22 @@ body {
   background: var(--color-bg-surface);
   border-right: 1px solid var(--color-border-subtle);
 }
-.controls-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+.controls-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--fresh-river-soft) transparent;
+}
+.controls-scroll::-webkit-scrollbar { width: 8px; }
+.controls-scroll::-webkit-scrollbar-track { background: transparent; }
+.controls-scroll::-webkit-scrollbar-thumb {
+  background: var(--fresh-river-mid);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.controls-scroll::-webkit-scrollbar-thumb:hover { background: var(--fresh-river-soft); }
 .sheet-handle { display: none; }
 
 /* Header oben im Sheet/Sidebar: Bearbeiten-Hinweis (prominent) + kompakter
@@ -171,6 +186,8 @@ body {
   box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.22), 0 18px 50px rgba(0, 0, 0, 0.55);
 }
 
+/* Dropzone liegt im skalierten Stage → Maße in em (Basis-font kommt inline,
+   stage-relativ), damit sie auf jedem Format gleich aussieht. */
 .canvas-dropzone {
   position: absolute;
   left: 50%;
@@ -179,26 +196,26 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: var(--space-4) var(--space-6);
-  background: color-mix(in srgb, var(--fresh-dark-b) 82%, transparent);
-  border: 1px dashed var(--color-border-glass);
-  border-radius: var(--radius-md);
+  gap: 0.05em;
+  padding: 0.55em 0.95em;
+  background: color-mix(in srgb, var(--fresh-dark-b) 80%, transparent);
+  border: 0.03em dashed var(--color-border-glass);
+  border-radius: 0.14em;
   color: var(--color-text-secondary);
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 1.1rem;
   text-transform: uppercase;
   letter-spacing: 0.02em;
+  line-height: 1.1;
   cursor: pointer;
   backdrop-filter: blur(4px);
 }
 .canvas-dropzone:hover { color: var(--color-text-primary); border-color: var(--fresh-rose); }
-.dz-plus { font-size: 1.7rem; line-height: 1; color: var(--fresh-rose); }
+.dz-plus { font-size: 1.5em; line-height: 1; color: var(--fresh-rose); }
 .dz-hint {
   font-family: var(--font-body);
   font-weight: 600;
-  font-size: 0.7rem;
+  font-size: 0.34em;
   text-transform: none;
   letter-spacing: 0;
   color: var(--color-text-tertiary);

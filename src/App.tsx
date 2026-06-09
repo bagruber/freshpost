@@ -123,6 +123,11 @@ export default function App() {
     setGroupSize((p) => (p.w === s.w && p.h === s.h ? p : s));
   }, []);
 
+  // Dedupe wie beim Claim — sonst Endlosschleife (setState im Layout-Effekt).
+  const handleIlluMeasure = useCallback((s: Size) => {
+    setIlluSize((p) => (p.w === s.w && p.h === s.h ? p : s));
+  }, []);
+
   const ext = useMemo(() => extents(groupSize, claim.tilt, dimension), [groupSize, claim.tilt, dimension]);
 
   const onDrag = (raw: Pos) => {
@@ -232,8 +237,21 @@ export default function App() {
               dimension={dimension}
               stageRef={stageRef}
               onDrag={onIlluDrag}
-              onMeasure={setIlluSize}
+              onMeasure={handleIlluMeasure}
             />
+          )}
+          {/* Dropzone liegt im Stage unter dem Claim (stage-relativ skaliert)
+              und wird beim Export ausgeblendet. */}
+          {!hasContent && !exporting && (
+            <button
+              className="canvas-dropzone"
+              style={{ fontSize: dimension.width * 0.038 }}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <span className="dz-plus">＋</span>
+              {mode === "photo" ? "Foto hinzufügen" : "Illustration hinzufügen"}
+              <span className="dz-hint">klicken oder hierher ziehen</span>
+            </button>
           )}
           <ClaimGroup
             claim={claim}
@@ -244,13 +262,6 @@ export default function App() {
             onMeasure={handleMeasure}
           />
         </Stage>
-        {!hasContent && (
-          <button className="canvas-dropzone" onClick={() => fileInputRef.current?.click()}>
-            <span className="dz-plus">＋</span>
-            {mode === "photo" ? "Foto hinzufügen" : "Illustration hinzufügen"}
-            <span className="dz-hint">klicken oder hierher ziehen</span>
-          </button>
-        )}
       </main>
     </div>
   );
