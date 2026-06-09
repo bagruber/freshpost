@@ -1,7 +1,9 @@
-import { useRef } from "react";
+import { forwardRef, useRef } from "react";
 
 // Hintergrundbild: füllt die Stage (cover) und lässt sich verschieben, falls es
 // in einer Achse übersteht. Umsetzung über object-position (0..100 %).
+// Die <img>-Ref wird nach außen gereicht, damit der Export kurzzeitig das
+// voll aufgelöste, gefilterte Bild einsetzen kann.
 
 type Pos = { x: number; y: number };
 
@@ -12,7 +14,10 @@ type Props = {
   onChange: (pos: Pos) => void;
 };
 
-export function BackgroundLayer({ src, pos, stageRef, onChange }: Props) {
+export const BackgroundLayer = forwardRef<HTMLImageElement, Props>(function BackgroundLayer(
+  { src, pos, stageRef, onChange },
+  ref,
+) {
   const start = useRef<{ px: number; py: number; pos: Pos }>({ px: 0, py: 0, pos });
 
   const clamp = (v: number) => Math.min(100, Math.max(0, v));
@@ -23,7 +28,6 @@ export function BackgroundLayer({ src, pos, stageRef, onChange }: Props) {
     const rect = stage.getBoundingClientRect();
     const dx = (e.clientX - start.current.px) / rect.width;
     const dy = (e.clientY - start.current.py) / rect.height;
-    // Bild mit dem Finger mitziehen → object-position gegenläufig.
     onChange({
       x: clamp(start.current.pos.x - dx * 100),
       y: clamp(start.current.pos.y - dy * 100),
@@ -43,6 +47,7 @@ export function BackgroundLayer({ src, pos, stageRef, onChange }: Props) {
 
   return (
     <img
+      ref={ref}
       className="bg-image"
       src={src}
       alt=""
@@ -51,4 +56,4 @@ export function BackgroundLayer({ src, pos, stageRef, onChange }: Props) {
       style={{ objectPosition: `${pos.x}% ${pos.y}%` }}
     />
   );
-}
+});

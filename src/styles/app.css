@@ -8,8 +8,8 @@ body {
   color: var(--color-text-primary);
 }
 
-/* Layout: Desktop = Controls links neben Canvas. Mobile = Canvas oben,
-   Controls darunter (scrollbar). */
+/* Layout: Desktop = Controls links neben Canvas. Mobile = Canvas füllt den
+   Schirm, Controls als Bottom-Sheet (siehe .as-sheet). */
 .app {
   display: grid;
   grid-template-columns: 320px 1fr;
@@ -17,6 +17,7 @@ body {
 }
 
 .canvas-area {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -27,15 +28,22 @@ body {
     radial-gradient(circle at 50% 30%, var(--fresh-dark-c), var(--color-bg-page));
 }
 
-/* === Controls === */
-.controls {
+/* === Controls-Shell (Desktop: Seitenspalte) === */
+.controls-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   background: var(--color-bg-surface);
   border-right: 1px solid var(--color-border-subtle);
+}
+.controls-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+.sheet-handle { display: none; }
+
+.controls {
   padding: var(--space-5);
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  overflow-y: auto;
 }
 
 .controls-title {
@@ -166,22 +174,61 @@ body {
 
 .claim-box {
   white-space: nowrap; /* echte Umbrüche nur über die Eingabe */
-  line-height: 1;
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-sticker);
 }
+.claim-box > div { white-space: nowrap; }
 
-/* Mobile: Canvas oben, Controls darunter. */
+.grade-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border-subtle);
+}
+.grade-title {
+  margin: 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
+/* Mobile: Canvas füllt den Schirm, Controls als Bottom-Sheet. */
 @media (max-width: 760px) {
   .app {
     grid-template-columns: 1fr;
-    grid-template-rows: 1fr auto;
     height: 100%;
   }
-  .canvas-area { padding: var(--space-3); }
-  .controls {
+  .canvas-area { padding: var(--space-3); padding-bottom: 84px; }
+
+  .controls-shell.as-sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 72vh;
     border-right: none;
     border-top: 1px solid var(--color-border-subtle);
-    max-height: 50vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.45);
+    z-index: 50;
+    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .controls-shell.as-sheet .sheet-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    flex-shrink: 0;
+    cursor: grab;
+    touch-action: none;
+  }
+  .controls-shell.as-sheet .sheet-handle span {
+    width: 44px;
+    height: 5px;
+    border-radius: 999px;
+    background: var(--color-border-glass);
   }
 }

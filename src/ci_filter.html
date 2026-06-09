@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CI Color Grade Filter</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #1a1a1a; color: #ddd; padding: 1.5rem; }
+  h1 { font-size: 15px; font-weight: 500; color: #aaa; margin-bottom: 1.2rem; letter-spacing: .03em; }
+
+  .drop-zone {
+    border: 1px dashed #444; border-radius: 10px; padding: 3rem;
+    text-align: center; cursor: pointer; color: #666; font-size: 14px;
+    transition: background .15s;
+  }
+  .drop-zone:hover { background: #222; }
+
+  .canvases {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 1rem 0;
+  }
+  .canvas-wrap { background: #000; border-radius: 6px; overflow: hidden; position: relative; }
+  .canvas-wrap canvas { width: 100%; display: block; max-height: 300px; object-fit: contain; }
+  .canvas-label {
+    position: absolute; top: 6px; left: 8px; font-size: 11px; color: #fff;
+    background: rgba(0,0,0,.6); padding: 2px 7px; border-radius: 4px;
+  }
+
+  .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .panel {
+    background: #242424; border-radius: 8px; padding: 12px 14px;
+    border: .5px solid #333;
+  }
+  .panel.full { grid-column: 1 / -1; }
+  .panel-title {
+    font-size: 10px; font-weight: 500; color: #666; text-transform: uppercase;
+    letter-spacing: .07em; margin-bottom: 10px;
+  }
+  .row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+  .row label { font-size: 12px; color: #999; width: 86px; flex-shrink: 0; line-height: 1.4; }
+  .row input[type=range] { flex: 1; accent-color: #888; }
+  .row .val { font-size: 12px; font-weight: 500; min-width: 26px; text-align: right; color: #ddd; }
+  .note { font-size: 10px; color: #555; margin: -3px 0 8px 94px; line-height: 1.5; }
+  .dot {
+    display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    margin-right: 4px; vertical-align: 1px;
+  }
+
+  .actions { display: flex; gap: 8px; margin-top: 10px; }
+  .actions button {
+    flex: 1; padding: 7px; background: #2a2a2a; border: .5px solid #444;
+    border-radius: 6px; color: #ccc; font-size: 13px; cursor: pointer;
+  }
+  .actions button:hover { background: #333; }
+  .status { font-size: 11px; color: #555; text-align: center; margin-top: 8px; min-height: 16px; }
+</style>
+</head>
+<body>
+
+<h1>CI Color Grade Filter</h1>
+
+<div class="drop-zone" id="dz">
+  Drop an image here or click to upload
+  <input type="file" id="fi" accept="image/*" style="display:none">
+</div>
+
+<div id="area" style="display:none">
+  <div class="canvases">
+    <div class="canvas-wrap"><canvas id="co"></canvas><span class="canvas-label">original</span></div>
+    <div class="canvas-wrap"><canvas id="cf"></canvas><span class="canvas-label">filtered</span></div>
+  </div>
+
+  <div class="panels">
+    <!-- Base -->
+    <div class="panel">
+      <p class="panel-title">① Curve</p>
+      <div class="row">
+        <label>Strength</label>
+        <input type="range" id="p-cv" min="0" max="100" value="45" step="1">
+        <span class="val" id="d-cv">45</span>
+      </div>
+      <p class="note" style="margin-left:0">Narrow Gaussian midtone suppression (k=75, α=0.96). Edges 0–30% and 70–100% get full boost; flat zone ≈ ±0.05 around 0.5.</p>
+    </div>
+
+    <div class="panel">
+      <p class="panel-title">② Warmth</p>
+      <div class="row">
+        <label>Amount</label>
+        <input type="range" id="p-wm" min="0" max="100" value="20" step="1">
+        <span class="val" id="d-wm">20</span>
+      </div>
+      <p class="note" style="margin-left:0">+R/−B channel shift after all HSV ops. Halved vs. previous version.</p>
+    </div>
+
+    <!-- CI Pulls -->
+    <div class="panel full">
+      <p class="panel-title">③ CI Color Pulls — Gaussian hue weights + per-pixel soft conditions</p>
+
+      <div class="row">
+        <label><span class="dot" style="background:#D81657"></span>Rose 340°</label>
+        <input type="range" id="p-ro" min="0" max="100" value="50" step="1">
+        <span class="val" id="d-ro">50</span>
+      </div>
+      <p class="note">320°–360° · σ=20° · active only for s &gt; 62% (skin tones excluded)</p>
+
+      <div class="row">
+        <label><span class="dot" style="background:#13BFB1"></span>Wind 175°</label>
+        <input type="range" id="p-wi" min="0" max="100" value="50" step="1">
+        <span class="val" id="d-wi">50</span>
+      </div>
+      <p class="note">165°–195° one-sided · σ=12° · active for v &gt; 75% and s &gt; 55%</p>
+
+      <div class="row">
+        <label><span class="dot" style="background:#538AA6"></span>River 200°</label>
+        <input type="range" id="p-rv" min="0" max="100" value="50" step="1">
+        <span class="val" id="d-rv">50</span>
+      </div>
+      <p class="note">190°–250° · σ=28° · active for v &lt; 65% (dark tones only)</p>
+    </div>
+
+    <!-- Blue -->
+    <div class="panel full">
+      <p class="panel-title">④ Blue Range Desat + Contrast · 175°–250°</p>
+      <div class="row">
+        <label>Strength</label>
+        <input type="range" id="p-bd" min="0" max="100" value="55" step="1">
+        <span class="val" id="d-bd">55</span>
+      </div>
+      <p class="note" style="margin-left:0">Desaturation factor 0.65 (reduced). Mild V-contrast S-curve at 0.4× strength in same range. Both attenuated for s &gt; 65% (vivid blues protected).</p>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button id="br">Reset</button>
+    <button id="be">Export JPG</button>
+  </div>
+  <p class="status" id="st"></p>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const cl = v => v < 0 ? 0 : v > 255 ? 255 : v;
+const gauss = (x, s) => Math.exp(-(x * x) / (2 * s * s));
+const ss = (e0, e1, x) => { const t = Math.max(0, Math.min(1, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
+const soft = (lo, hi, v) => Math.max(0, Math.min(1, (v - lo) / (hi - lo)));
+
+function rgbToHsv(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  let h = 0;
+  if (d > 0) {
+    if (mx === r) h = ((g - b) / d + (g < b ? 6 : 0)) * 60;
+    else if (mx === g) h = ((b - r) / d + 2) * 60;
+    else h = ((r - g) / d + 4) * 60;
+  }
+  return [h, mx === 0 ? 0 : d / mx, mx];
+}
+
+function hsvToRgb(h, s, v) {
+  h = ((h % 360) + 360) % 360;
+  const i = Math.floor(h / 60) % 6, f = h / 60 - Math.floor(h / 60);
+  const p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s);
+  return [[v,t,p],[q,v,p],[p,v,t],[p,q,v],[t,p,v],[v,p,q]][i].map(x => x * 255);
+}
+
+function hdiff(a, b) {
+  let d = b - a;
+  while (d > 180) d -= 360;
+  while (d < -180) d += 360;
+  return d;
+}
+const normH = h => ((Math.round(h) % 360) + 360) % 360;
+
+let orig = null, W = 0, H = 0;
+
+function getP() {
+  const g = id => parseInt($(id).value) / 100;
+  return {
+    cv: g('p-cv'), wm: g('p-wm'),
+    ro: g('p-ro'), wi: g('p-wi'), rv: g('p-rv'), bd: g('p-bd')
+  };
+}
+
+function buildLUTs(p) {
+  // ─── Curve LUT ───────────────────────────────────────────────────────────────
+  // f(x) = x + A·sin(2πx)/(2π) · (1 − α·exp(−k·(x−0.5)²))
+  // CHANGED: k = 75 (was 40), α = 0.96 (was 0.88), A_max = 0.60 (was 0.42)
+  // Effect: flat zone collapses to ≈ ±0.05 around 0.5; edge boost significantly stronger
+  const curvLUT = new Float32Array(256);
+  const A = p.cv * 0.60;
+  for (let i = 0; i < 256; i++) {
+    const x = i / 255;
+    const sinCorr = Math.sin(2 * Math.PI * x) / (2 * Math.PI);
+    const gaussSup = 0.96 * Math.exp(-75 * (x - 0.5) * (x - 0.5));
+    curvLUT[i] = Math.max(0, Math.min(1, x + A * sinCorr * (1 - gaussSup)));
+  }
+
+  // ─── Hue weight tables ───────────────────────────────────────────────────────
+  const roseW  = new Float32Array(360);
+  const windW  = new Float32Array(360);
+  const riverW = new Float32Array(360);
+  const blueW  = new Float32Array(360);
+
+  for (let i = 0; i < 360; i++) {
+    // Rose 340° · σ=20° (effective range 300°–380°=20°, core 320°–360°)
+    roseW[i] = gauss(Math.abs(hdiff(i, 340)), 20);
+
+    // Wind 175° · one-sided (only i > 175°) · soft window 163°–200° · σ=12°
+    const wd = hdiff(i, 175);
+    if (wd < 0) {
+      windW[i] = gauss(Math.abs(wd), 12)
+               * ss(163, 176, i)        // soft lower boundary (warm-green side)
+               * (1 - ss(183, 200, i)); // soft upper boundary (river side)
+    }
+
+    // River 200° · bidirectional · soft window 185°–262° · σ=28°
+    riverW[i] = gauss(Math.abs(hdiff(i, 200)), 28)
+              * ss(185, 198, i)         // lower boundary
+              * (1 - ss(245, 262, i));  // upper boundary
+
+    // Blue 175°–250° · centered 212° · σ=36°
+    blueW[i] = gauss(Math.abs(hdiff(i, 212)), 36)
+             * ss(168, 183, i)
+             * (1 - ss(245, 262, i));
+  }
+
+  return { curvLUT, roseW, windW, riverW, blueW };
+}
+
+function compute() {
+  if (!orig) return;
+  const p = getP();
+  const lut = buildLUTs(p);
+  const src = orig.data;
+  const out = new Uint8ClampedArray(src.length);
+
+  for (let i = 0; i < src.length; i += 4) {
+    let [h, s, v] = rgbToHsv(src[i], src[i + 1], src[i + 2]);
+
+    // ① Curve on V (color-neutral)
+    v = lut.curvLUT[Math.min(255, Math.round(v * 255))];
+
+    let hi = normH(h);
+
+    // ③ CI Color Pulls ─────────────────────────────────────────────────────────
+
+    // Rose 340° — saturated colors only (s > 62%); skin tones fall below threshold
+    if (p.ro > 0) {
+      const act = soft(0.60, 0.76, s);
+      const w = lut.roseW[hi] * p.ro * act;
+      if (w > 0.002) {
+        h += hdiff(h, 340) * w * 0.72;
+        s = Math.min(1, s + (1 - s) * lut.roseW[hi] * p.ro * act * 0.35);
+        hi = normH(h);
+      }
+    }
+
+    // Wind 175° — one-sided, bright (v>75%) and saturated (s>55%) only
+    if (p.wi > 0) {
+      const act = soft(0.72, 0.86, v) * soft(0.52, 0.66, s);
+      const w = lut.windW[hi] * p.wi * act;
+      if (w > 0.002) {
+        h += hdiff(h, 175) * w * 0.70;
+        s = Math.min(1, s + (1 - s) * w * 0.30);
+        hi = normH(h);
+      }
+    }
+
+    // River 200° — dark pixels only (v<65%), nudge sat toward 50%
+    if (p.rv > 0) {
+      const act = soft(0.65, 0.50, v); // inverted: 1 at v=0, fades to 0 at v=0.65
+      const w = lut.riverW[hi] * p.rv * act;
+      if (w > 0.002) {
+        h += hdiff(h, 200) * w * 0.68;
+        s = s + (0.5 - s) * w * 0.42;
+        hi = normH(h);
+      }
+    }
+
+    // ④ Blue range (175°–250°): desaturation + contrast ────────────────────────
+    if (p.bd > 0) {
+      const bw = lut.blueW[hi];
+      // Highly saturated blues protected (satProtect → 0 at s > 0.9)
+      const satProtect = 1 - soft(0.62, 0.90, s);
+
+      // Desaturation — CHANGED: factor 0.65 (was 0.82), slightly gentler
+      const desatW = bw * p.bd * satProtect;
+      if (desatW > 0.002) s = Math.max(0, s * (1 - desatW * 0.65));
+
+      // Contrast S-curve on V, same hue window, 0.4× relative strength
+      // Term: vCentered * (1 − 4·vCentered²) is an S-shape zero at v=0, 0.5, 1
+      const contrastW = bw * p.bd * satProtect * 0.4;
+      if (contrastW > 0.002) {
+        const vc = v - 0.5;
+        v = Math.max(0, Math.min(1, v + contrastW * vc * (1 - 4 * vc * vc) * 0.5));
+      }
+    }
+
+    s = Math.max(0, Math.min(1, s));
+    const [r, g, b] = hsvToRgb(h, s, v);
+
+    // ② Warmth — CHANGED: multipliers halved (0.06/0.01/0.05 was 0.12/0.02/0.10)
+    out[i]     = cl(r * (1 + p.wm * 0.06));
+    out[i + 1] = cl(g * (1 + p.wm * 0.01));
+    out[i + 2] = cl(b * (1 - p.wm * 0.05));
+    out[i + 3] = src[i + 3];
+  }
+
+  const ctx = $('cf').getContext('2d');
+  const imgd = ctx.createImageData(W, H);
+  imgd.data.set(out);
+  ctx.putImageData(imgd, 0, 0);
+  $('st').textContent = `${(W * H / 1000).toFixed(0)}k px processed`;
+}
+
+function schedule() {
+  $('st').textContent = 'Processing…';
+  setTimeout(compute, 16);
+}
+
+function loadImg(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const MAX = 900, sc = Math.min(1, MAX / Math.max(img.width, img.height));
+      W = Math.round(img.width * sc);
+      H = Math.round(img.height * sc);
+      ['co', 'cf'].forEach(id => {
+        const c = $(id);
+        c.width = W; c.height = H;
+        c.getContext('2d').drawImage(img, 0, 0, W, H);
+      });
+      orig = $('co').getContext('2d').getImageData(0, 0, W, H);
+      $('area').style.display = 'block';
+      $('dz').style.display = 'none';
+      schedule();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+$('dz').addEventListener('click', () => $('fi').click());
+$('dz').addEventListener('dragover', e => e.preventDefault());
+$('dz').addEventListener('drop', e => { e.preventDefault(); loadImg(e.dataTransfer.files[0]); });
+$('fi').addEventListener('change', e => loadImg(e.target.files[0]));
+
+[['p-cv','d-cv'],['p-wm','d-wm'],['p-ro','d-ro'],['p-wi','d-wi'],['p-rv','d-rv'],['p-bd','d-bd']].forEach(([s, d]) => {
+  $(s).addEventListener('input', () => { $(d).textContent = $(s).value; schedule(); });
+});
+
+$('br').addEventListener('click', () => {
+  [['p-cv',45],['p-wm',20],['p-ro',50],['p-wi',50],['p-rv',50],['p-bd',55]].forEach(([id, v]) => {
+    $(id).value = v;
+    $('d-' + id.slice(2)).textContent = v;
+  });
+  schedule();
+});
+
+$('be').addEventListener('click', () => {
+  const a = document.createElement('a');
+  a.download = 'filtered.jpg';
+  a.href = $('cf').toDataURL('image/jpeg', 0.92);
+  a.click();
+});
+</script>
+</body>
+</html>

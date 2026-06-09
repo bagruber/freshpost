@@ -19,7 +19,8 @@ export type Claim = {
   tilt: number; // Grad, Gruppen-Neigung (-9..9)
   mainSize: number; // Bruchteil der Stage-Breite (Main-Schrift)
   secScale: number; // Verhältnis Oben/Unten zu Main, ≤ 2/3
-  secOffset: number; // horizontaler Versatz Oben/Unten, Bruchteil der Main-Breite
+  upperOffset: number; // horizontaler Versatz Oben, Bruchteil der Main-Breite
+  lowerOffset: number; // horizontaler Versatz Unten, Bruchteil der Main-Breite
   x: number; // Gruppen-Mittelpunkt, Bruchteil 0..1
   y: number;
 };

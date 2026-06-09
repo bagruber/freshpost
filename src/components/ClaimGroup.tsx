@@ -2,12 +2,13 @@ import { useLayoutEffect, useRef } from "react";
 import type { Claim } from "../lib/types";
 import { STYLE_BG, STYLE_FG } from "../lib/types";
 import type { Dimension } from "../lib/dimensions";
-import { buildBoxes, PAD_X, PAD_Y } from "../lib/boxes";
+import { buildSegments, PAD_X, PAD_Y, LINE_TIGHT } from "../lib/boxes";
 import { useDrag } from "../hooks/useDrag";
 
-// Stack aus einzelnen Sticker-Boxen (upper / main / lower). Echte Zeilenumbrüche
-// kommen aus dem Input. Boxen überlappen leicht; Oben/Unten können horizontal
-// versetzt sein. Die ganze Gruppe wird gemeinsam geneigt und verschoben.
+// Stack aus Sektionsboxen (oben / main / unten). Jede Sektion ist eine Box mit
+// durchgehendem Hintergrund; Zeilen darin eng gestapelt. Oben/Unten liegen
+// optisch vor Main und können horizontal versetzt sein. Die ganze Gruppe wird
+// gemeinsam geneigt und verschoben.
 
 type Props = {
   claim: Claim;
@@ -22,8 +23,7 @@ export function ClaimGroup({ claim, dimension, stageRef, onDrag, onMeasure }: Pr
   const onPointerDown = useDrag(stageRef, onDrag);
 
   const mainPx = claim.mainSize * dimension.width;
-  const boxes = buildBoxes(claim, claim.secScale);
-  const offsetPx = claim.secOffset * mainPx;
+  const segs = buildSegments(claim, claim.secScale);
 
   useLayoutEffect(() => {
     const el = groupRef.current;
@@ -44,25 +44,29 @@ export function ClaimGroup({ claim, dimension, stageRef, onDrag, onMeasure }: Pr
         transform: `translate(-50%, -50%) rotate(${claim.tilt}deg)`,
       }}
     >
-      {boxes.map((b, i) => {
-        const fontPx = mainPx * b.ratio;
-        const shift = b.segment === "main" ? 0 : offsetPx;
+      {segs.map((seg, i) => {
+        const fontPx = mainPx * seg.ratio;
+        const shift = seg.offset * mainPx;
         return (
           <div
-            key={i}
+            key={seg.segment}
             className="claim-box"
             style={{
-              background: STYLE_BG[b.style],
-              color: STYLE_FG[b.style],
+              background: STYLE_BG[seg.style],
+              color: STYLE_FG[seg.style],
               fontSize: fontPx,
-              fontWeight: b.weight,
+              fontWeight: seg.weight,
+              lineHeight: LINE_TIGHT,
               padding: `${fontPx * PAD_Y}px ${fontPx * PAD_X}px`,
-              marginTop: i === 0 ? 0 : -fontPx * b.overlap,
+              marginTop: i === 0 ? 0 : -fontPx * seg.overlapTop,
               transform: shift ? `translateX(${shift}px)` : undefined,
-              textTransform: b.cap ? "uppercase" : "none",
+              textTransform: seg.cap ? "uppercase" : "none",
+              zIndex: seg.segment === "main" ? 1 : 2,
             }}
           >
-            {b.text}
+            {seg.lines.map((line, j) => (
+              <div key={j}>{line}</div>
+            ))}
           </div>
         );
       })}

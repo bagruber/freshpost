@@ -3,10 +3,13 @@ import { Stage } from "./components/Stage";
 import { ClaimGroup } from "./components/ClaimGroup";
 import { BackgroundLayer } from "./components/BackgroundLayer";
 import { Controls } from "./components/Controls";
+import { BottomSheet } from "./components/BottomSheet";
 import { DEFAULT_DIMENSION, getDimension, type Dimension } from "./lib/dimensions";
 import { autoMainSize } from "./lib/layout";
 import { exportStageToJpg } from "./lib/exportImage";
 import { SEC_MAX, secondaryStyle, type Claim } from "./lib/types";
+import { GRADE_BASE, scaleGrade, filterToDataUrl, type Grade } from "./lib/ciFilter";
+import type { LoadedImage } from "./lib/image";
 
 const randomTilt = () => Math.round((Math.random() * 8 - 4) * 10) / 10; // ±4°
 const randomOffset = () => Math.round((Math.random() * 0.44 - 0.22) * 100) / 100; // ±0.22
@@ -14,7 +17,6 @@ const randomOffset = () => Math.round((Math.random() * 0.44 - 0.22) * 100) / 100
 type Size = { w: number; h: number };
 type Pos = { x: number; y: number };
 
-// Rotations-bewusste halbe Ausdehnung der Gruppe als Bruchteil der Stage.
 function extents(size: Size, tilt: number, dim: Dimension) {
   const a = (tilt * Math.PI) / 180;
   const c = Math.abs(Math.cos(a));
@@ -25,7 +27,6 @@ function extents(size: Size, tilt: number, dim: Dimension) {
   };
 }
 
-// Auf den Canvas begrenzen (nicht auf die Safety-Zone).
 function clampToCanvas(pos: Pos, ext: { hx: number; hy: number }): Pos {
   const fit = (v: number, h: number) => (h > 0.5 ? 0.5 : Math.min(1 - h, Math.max(h, v)));
   return { x: fit(pos.x, ext.hx), y: fit(pos.y, ext.hy) };
@@ -33,32 +34,42 @@ function clampToCanvas(pos: Pos, ext: { hx: number; hy: number }): Pos {
 
 export default function App() {
   const [dimensionKey, setDimensionKey] = useState(DEFAULT_DIMENSION.key);
-  const [background, setBackground] = useState<string | null>(null);
-  const [bgPos, setBgPos] = useState<Pos>({ x: 50, y: 50 });
   const [advanced, setAdvanced] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [fontsReady, setFontsReady] = useState(false);
   const [groupSize, setGroupSize] = useState<Size>({ w: 0, h: 0 });
   const [claim, setClaim] = useState<Claim>({
-    upper: "",
-    main: "",
-    lower: "",
-    capUpper: true,
-    capMain: true,
-    capLower: true,
-    upperStyle: "white",
-    mainStyle: "rose",
-    lowerStyle: "white",
+    upper: "", main: "", lower: "",
+    capUpper: true, capMain: true, capLower: true,
+    upperStyle: "white", mainStyle: "rose", lowerStyle: "white",
     tilt: randomTilt(),
     mainSize: 0.11,
     secScale: SEC_MAX,
-    secOffset: 0,
-    x: 0.5,
-    y: 0.62,
+    upperOffset: randomOffset(),
+    lowerOffset: randomOffset(),
+    x: 0.5, y: 0.62,
   });
+
+  // Hintergrund-Pipeline: Originale als ImageData in Refs, angezeigt wird die
+  // gefilterte Vorschau (klein) als Data-URL.
+  const origFull = useRef<ImageData | null>(null);
+  const origPreview = useRef<ImageData | null>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [bgSrc, setBgSrc] = useState<string | null>(null);
+  const [bgPos, setBgPos] = useState<Pos>({ x: 50, y: 50 });
+  const [imageVersion, setImageVersion] = useState(0);
+  const [imgStrength, setImgStrength] = useState(50); // Standard: ein Regler
+  const [gradeAdv, setGradeAdv] = useState<Grade>(() => scaleGrade(GRADE_BASE, 0.5));
 
   const stageRef = useRef<HTMLDivElement>(null);
   const dimension = getDimension(dimensionKey);
+
+  // Effektiver Grade: Advanced nutzt die Einzelregler, Standard skaliert den
+  // empfohlenen Look mit dem einen CI-Look-Regler.
+  const grade = useMemo<Grade>(
+    () => (advanced ? gradeAdv : scaleGrade(GRADE_BASE, imgStrength / 100)),
+    [advanced, gradeAdv, imgStrength],
+  );
 
   useEffect(() => {
     document.fonts.ready.then(() => setFontsReady(true));
@@ -72,33 +83,52 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [advanced, claim.upper, claim.main, claim.lower, claim.capUpper, claim.capMain, claim.capLower, dimension, fontsReady]);
 
+  // Live-Vorschau des Filters (kleine Auflösung), per rAF gedrosselt.
+  useEffect(() => {
+    const prev = origPreview.current;
+    if (!prev) return;
+    const raf = requestAnimationFrame(() => setBgSrc(filterToDataUrl(prev, grade)));
+    return () => cancelAnimationFrame(raf);
+  }, [grade, imageVersion]);
+
   const patchClaim = (patch: Partial<Claim>) => setClaim((c) => ({ ...c, ...patch }));
 
-  // Beim Verlassen des Advanced-Mode auf die Standard-Defaults zurücksetzen.
   const onAdvanced = (on: boolean) => {
     setAdvanced(on);
-    if (!on) {
+    if (on) {
+      setGradeAdv(scaleGrade(GRADE_BASE, imgStrength / 100));
+    } else {
       setClaim((c) => ({
         ...c,
         secScale: SEC_MAX,
-        secOffset: 0,
-        capUpper: true,
-        capMain: true,
-        capLower: true,
+        capUpper: true, capMain: true, capLower: true,
         upperStyle: secondaryStyle(c.mainStyle),
         lowerStyle: secondaryStyle(c.mainStyle),
       }));
     }
   };
 
+  const onReroll = () =>
+    patchClaim({ tilt: randomTilt(), upperOffset: randomOffset(), lowerOffset: randomOffset() });
+
+  const onBackground = (img: LoadedImage | null) => {
+    if (!img) {
+      origFull.current = null;
+      origPreview.current = null;
+      setBgSrc(null);
+      return;
+    }
+    origFull.current = img.full;
+    origPreview.current = img.preview;
+    setBgPos({ x: 50, y: 50 });
+    setImageVersion((v) => v + 1);
+  };
+
   const handleMeasure = useCallback((s: Size) => {
     setGroupSize((p) => (p.w === s.w && p.h === s.h ? p : s));
   }, []);
 
-  const ext = useMemo(
-    () => extents(groupSize, claim.tilt, dimension),
-    [groupSize, claim.tilt, dimension],
-  );
+  const ext = useMemo(() => extents(groupSize, claim.tilt, dimension), [groupSize, claim.tilt, dimension]);
 
   const onDrag = (raw: Pos) => {
     const p = clampToCanvas(raw, ext);
@@ -116,21 +146,22 @@ export default function App() {
     );
   }, [claim.x, claim.y, ext, dimension]);
 
-  const setNewBackground = (url: string | null) => {
-    setBackground(url);
-    setBgPos({ x: 50, y: 50 });
-  };
-
   const handleExport = async () => {
-    if (!stageRef.current) return;
+    const stage = stageRef.current;
+    if (!stage) return;
     setExporting(true);
     try {
-      await exportStageToJpg(
-        stageRef.current,
-        dimension.width,
-        dimension.height,
-        `freshpost-${dimension.key}.jpg`,
-      );
+      const img = imgRef.current;
+      const full = origFull.current;
+      let restore: string | null = null;
+      // Für den Export kurz das voll aufgelöste, gefilterte Bild einsetzen.
+      if (img && full) {
+        restore = img.src;
+        img.src = filterToDataUrl(full, grade);
+        await img.decode().catch(() => {});
+      }
+      await exportStageToJpg(stage, dimension.width, dimension.height, `freshpost-${dimension.key}.jpg`);
+      if (img && restore != null) img.src = restore;
     } finally {
       setExporting(false);
     }
@@ -138,19 +169,25 @@ export default function App() {
 
   return (
     <div className="app">
-      <Controls
-        claim={claim}
-        dimension={dimension}
-        advanced={advanced}
-        onClaim={patchClaim}
-        onDimension={setDimensionKey}
-        onBackground={setNewBackground}
-        onAdvanced={onAdvanced}
-        onRerollTilt={() => patchClaim({ tilt: randomTilt() })}
-        onRerollOffset={() => patchClaim({ secOffset: randomOffset() })}
-        onExport={handleExport}
-        exporting={exporting}
-      />
+      <BottomSheet>
+        <Controls
+          claim={claim}
+          dimension={dimension}
+          advanced={advanced}
+          hasBackground={bgSrc != null}
+          imgStrength={imgStrength}
+          grade={grade}
+          onClaim={patchClaim}
+          onDimension={setDimensionKey}
+          onBackground={onBackground}
+          onAdvanced={onAdvanced}
+          onReroll={onReroll}
+          onImgStrength={setImgStrength}
+          onGrade={(key, v) => setGradeAdv((g) => ({ ...g, [key]: v }))}
+          onExport={handleExport}
+          exporting={exporting}
+        />
+      </BottomSheet>
       <main className="canvas-area">
         <Stage
           ref={stageRef}
@@ -158,8 +195,8 @@ export default function App() {
           showSafeZone={!exporting}
           warnSafeZone={warnSafeZone}
           background={
-            background ? (
-              <BackgroundLayer src={background} pos={bgPos} stageRef={stageRef} onChange={setBgPos} />
+            bgSrc ? (
+              <BackgroundLayer ref={imgRef} src={bgSrc} pos={bgPos} stageRef={stageRef} onChange={setBgPos} />
             ) : null
           }
         >
