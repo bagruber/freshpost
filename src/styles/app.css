@@ -236,15 +236,18 @@ body {
   position: absolute;
   inset: 0;
   isolation: isolate;
-  background: radial-gradient(circle at 50% 32%, var(--fresh-dark-c), var(--fresh-dark-d));
+  background: radial-gradient(circle at 50% 32%, var(--fresh-dark-d), var(--fresh-dark-omega));
 }
+/* Helle Papiertextur auf dunklem Grund: invertieren → dunkles Papier mit hellen
+   Graten, dann screen → subtile helle Knick-Struktur. */
 .bg-paper {
   position: absolute;
   inset: 0;
   background-size: cover;
   background-position: center;
-  mix-blend-mode: multiply;
-  filter: contrast(1.75) brightness(1.05);
+  filter: invert(1) brightness(1.4);
+  mix-blend-mode: screen;
+  opacity: 0.6;
 }
 .bg-dots {
   position: absolute;

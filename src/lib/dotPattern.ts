@@ -33,7 +33,7 @@ export function generateDotPattern(width: number, height: number): string {
       if (r < 0.4) continue;
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(120, 210, 204, ${0.05 + f * 0.13})`; // dezent wind-ish
+      ctx.fillStyle = `rgba(120, 210, 204, ${0.025 + f * 0.055})`; // sehr dezent, wind-ish
       ctx.fill();
     }
   }
