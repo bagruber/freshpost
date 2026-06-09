@@ -11,9 +11,11 @@ import { extents, clampToCanvas, violatesSafe, type Size, type Pos } from "./lib
 import { exportStageToJpg } from "./lib/exportImage";
 import { SEC_MAX, secondaryStyle, type Claim } from "./lib/types";
 import { GRADE_BASE, scaleGrade, type Grade } from "./lib/ciFilter";
+import { RANDOM, DEFAULTS } from "./lib/config";
 
-const randomTilt = () => Math.round((Math.random() * 8 - 4) * 10) / 10; // ±4°
-const randomOffset = () => Math.round((Math.random() * 0.44 - 0.22) * 100) / 100; // ±0.22
+const rnd = (range: number) => Math.round((Math.random() * 2 - 1) * range * 100) / 100;
+const randomTilt = () => rnd(RANDOM.tiltDeg);
+const randomOffset = () => rnd(RANDOM.offset);
 
 export default function App() {
   const [dimensionKey, setDimensionKey] = useState(DEFAULT_DIMENSION.key);
@@ -21,18 +23,18 @@ export default function App() {
   const [exporting, setExporting] = useState(false);
   const [fontsReady, setFontsReady] = useState(false);
   const [groupSize, setGroupSize] = useState<Size>({ w: 0, h: 0 });
-  const [imgStrength, setImgStrength] = useState(50); // Standard: ein CI-Look-Regler
-  const [gradeAdv, setGradeAdv] = useState<Grade>(() => scaleGrade(GRADE_BASE, 0.5));
+  const [imgStrength, setImgStrength] = useState(DEFAULTS.imgStrength); // Standard: ein CI-Look-Regler
+  const [gradeAdv, setGradeAdv] = useState<Grade>(() => scaleGrade(GRADE_BASE, DEFAULTS.gradeFactor));
   const [claim, setClaim] = useState<Claim>({
     upper: "", main: "", lower: "",
     capUpper: true, capMain: true, capLower: true,
     upperStyle: "white", mainStyle: "rose", lowerStyle: "white",
     tilt: randomTilt(),
-    mainSize: 0.11,
+    mainSize: DEFAULTS.mainSize,
     secScale: SEC_MAX,
     upperOffset: randomOffset(),
     lowerOffset: randomOffset(),
-    x: 0.5, y: 0.62,
+    x: 0.5, y: DEFAULTS.claimY,
   });
 
   const stageRef = useRef<HTMLDivElement>(null);
@@ -44,7 +46,8 @@ export default function App() {
     () => (advanced ? gradeAdv : scaleGrade(GRADE_BASE, imgStrength / 100)),
     [advanced, gradeAdv, imgStrength],
   );
-  const bg = useBackgroundImage(grade);
+  const { bgSrc, bgPos, setBgPos, hasBackground, imgRef, setImage, swapFullForExport } =
+    useBackgroundImage(grade);
 
   useEffect(() => {
     document.fonts.ready.then(() => setFontsReady(true));
@@ -102,7 +105,7 @@ export default function App() {
     if (!stage) return;
     setExporting(true);
     try {
-      const restore = await bg.swapFullForExport();
+      const restore = await swapFullForExport();
       await exportStageToJpg(stage, dimension.width, dimension.height, `freshpost-${dimension.key}.jpg`);
       restore();
     } finally {
@@ -117,12 +120,12 @@ export default function App() {
           claim={claim}
           dimension={dimension}
           advanced={advanced}
-          hasBackground={bg.hasBackground}
+          hasBackground={hasBackground}
           imgStrength={imgStrength}
           grade={grade}
           onClaim={patchClaim}
           onDimension={setDimensionKey}
-          onBackground={bg.setImage}
+          onBackground={setImage}
           onAdvanced={onAdvanced}
           onReroll={onReroll}
           onImgStrength={setImgStrength}
@@ -138,8 +141,8 @@ export default function App() {
           showSafeZone={!exporting}
           warnSafeZone={warnSafeZone}
           background={
-            bg.bgSrc ? (
-              <BackgroundLayer ref={bg.imgRef} src={bg.bgSrc} pos={bg.bgPos} stageRef={stageRef} onChange={bg.setBgPos} />
+            bgSrc ? (
+              <BackgroundLayer ref={imgRef} src={bgSrc} pos={bgPos} stageRef={stageRef} onChange={setBgPos} />
             ) : null
           }
         >

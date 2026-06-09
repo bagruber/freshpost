@@ -2,8 +2,10 @@ import { useRef } from "react";
 import type { Claim, StickerStyle } from "../lib/types";
 import { STYLES, SEC_MAX, boundaryOk, secondaryStyle } from "../lib/types";
 import type { Grade } from "../lib/ciFilter";
+import { SLIDER } from "../lib/config";
 import { DIMENSIONS, type Dimension } from "../lib/dimensions";
 import { loadBackgroundImage, IMAGE_ERROR_TEXT, ACCEPTED_TYPES, type LoadedImage } from "../lib/image";
+import { Slider, Toggle } from "./inputs";
 
 type Props = {
   claim: Claim;
@@ -135,50 +137,34 @@ export function Controls(props: Props) {
       <p ref={errRef} className="error" role="alert" />
 
       {hasBackground && !advanced && (
-        <label className="field">
-          <span>CI-Look {imgStrength}</span>
-          <input type="range" min={0} max={100} step={1} value={imgStrength}
-            onChange={(e) => onImgStrength(Number(e.target.value))} />
-        </label>
+        <Slider label={`CI-Look ${imgStrength}`} value={imgStrength} min={0} max={100} step={1}
+          onChange={onImgStrength} />
       )}
 
       <button className="btn-secondary" onClick={onReroll}>Look würfeln</button>
 
-      <label className="field-inline">
-        <input type="checkbox" checked={advanced} onChange={(e) => onAdvanced(e.target.checked)} />
-        <span>Erweiterter Modus</span>
-      </label>
+      <Toggle label="Erweiterter Modus" checked={advanced} onChange={onAdvanced} />
 
       {advanced && (
         <div className="advanced">
-          <label className="field">
-            <span>Schriftgröße {Math.round(claim.mainSize * 100)}</span>
-            <input type="range" min={4} max={18} step={0.5}
-              value={claim.mainSize * 100} onChange={(e) => onClaim({ mainSize: Number(e.target.value) / 100 })} />
-          </label>
+          <Slider label={`Schriftgröße ${Math.round(claim.mainSize * 100)}`}
+            value={claim.mainSize * 100} {...SLIDER.mainSize}
+            onChange={(v) => onClaim({ mainSize: v / 100 })} />
 
-          <label className="field">
-            <span>Oben/Unten-Größe {Math.round(claim.secScale * 100)}% von Claim</span>
-            <input type="range" min={25} max={Math.round(SEC_MAX * 100)} step={1}
-              value={Math.round(claim.secScale * 100)} onChange={(e) => onClaim({ secScale: Number(e.target.value) / 100 })} />
-          </label>
+          <Slider label={`Oben/Unten-Größe ${Math.round(claim.secScale * 100)}% von Claim`}
+            value={Math.round(claim.secScale * 100)} min={SLIDER.secScaleMin} max={Math.round(SEC_MAX * 100)} step={1}
+            onChange={(v) => onClaim({ secScale: v / 100 })} />
 
-          <label className="field">
-            <span>Neigung {claim.tilt.toFixed(1)}°</span>
-            <input type="range" min={-9} max={9} step={0.1}
-              value={claim.tilt} onChange={(e) => onClaim({ tilt: Number(e.target.value) })} />
-          </label>
+          <Slider label={`Neigung ${claim.tilt.toFixed(1)}°`}
+            value={claim.tilt} {...SLIDER.tiltDeg}
+            onChange={(v) => onClaim({ tilt: v })} />
 
-          <label className="field">
-            <span>Versatz Oben {Math.round(claim.upperOffset * 100)}</span>
-            <input type="range" min={-35} max={35} step={1}
-              value={Math.round(claim.upperOffset * 100)} onChange={(e) => onClaim({ upperOffset: Number(e.target.value) / 100 })} />
-          </label>
-          <label className="field">
-            <span>Versatz Unten {Math.round(claim.lowerOffset * 100)}</span>
-            <input type="range" min={-35} max={35} step={1}
-              value={Math.round(claim.lowerOffset * 100)} onChange={(e) => onClaim({ lowerOffset: Number(e.target.value) / 100 })} />
-          </label>
+          <Slider label={`Versatz Oben ${Math.round(claim.upperOffset * 100)}`}
+            value={Math.round(claim.upperOffset * 100)} {...SLIDER.offset}
+            onChange={(v) => onClaim({ upperOffset: v / 100 })} />
+          <Slider label={`Versatz Unten ${Math.round(claim.lowerOffset * 100)}`}
+            value={Math.round(claim.lowerOffset * 100)} {...SLIDER.offset}
+            onChange={(v) => onClaim({ lowerOffset: v / 100 })} />
 
           {hasUpper && (
             <ColorSelect label="Farbe Oben" value={claim.upperStyle}
@@ -193,30 +179,18 @@ export function Controls(props: Props) {
           )}
 
           <div className="caps-row">
-            <label className="field-inline">
-              <input type="checkbox" checked={claim.capUpper} onChange={(e) => onClaim({ capUpper: e.target.checked })} />
-              <span>Oben GROSS</span>
-            </label>
-            <label className="field-inline">
-              <input type="checkbox" checked={claim.capMain} onChange={(e) => onClaim({ capMain: e.target.checked })} />
-              <span>Claim GROSS</span>
-            </label>
-            <label className="field-inline">
-              <input type="checkbox" checked={claim.capLower} onChange={(e) => onClaim({ capLower: e.target.checked })} />
-              <span>Unten GROSS</span>
-            </label>
+            <Toggle label="Oben GROSS" checked={claim.capUpper} onChange={(v) => onClaim({ capUpper: v })} />
+            <Toggle label="Claim GROSS" checked={claim.capMain} onChange={(v) => onClaim({ capMain: v })} />
+            <Toggle label="Unten GROSS" checked={claim.capLower} onChange={(v) => onClaim({ capLower: v })} />
           </div>
 
           {hasBackground && (
             <div className="grade-block">
               <p className="grade-title">Bildlook</p>
               {GRADE_FIELDS.map((f) => (
-                <label className="field" key={f.key}>
-                  <span>{f.label} {Math.round(grade[f.key] * 100)}</span>
-                  <input type="range" min={0} max={100} step={1}
-                    value={Math.round(grade[f.key] * 100)}
-                    onChange={(e) => onGrade(f.key, Number(e.target.value) / 100)} />
-                </label>
+                <Slider key={f.key} label={`${f.label} ${Math.round(grade[f.key] * 100)}`}
+                  value={Math.round(grade[f.key] * 100)} min={0} max={100} step={1}
+                  onChange={(v) => onGrade(f.key, v / 100)} />
               ))}
             </div>
           )}

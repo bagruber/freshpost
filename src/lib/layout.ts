@@ -3,6 +3,7 @@ import { SEC_MAX } from "./types";
 import type { Dimension } from "./dimensions";
 import { unitWidth } from "./measure";
 import { buildSegments, segUnitHeight, BOX_W_PAD } from "./boxes";
+import { AUTO_SIZE_CLAMP } from "./config";
 
 // Automatische Main-Schriftgröße (Bruchteil der Stage-Breite), sodass der
 // gesamte Stack in die Safety-Zone passt. Standard-Mode nutzt das mit der
@@ -31,5 +32,5 @@ export function autoMainSize(claim: Claim, dim: Dimension): number {
   maxPx = Math.min(maxPx, safeH / unitH);
 
   const frac = maxPx / dim.width;
-  return Math.max(0.05, Math.min(0.16, frac));
+  return Math.max(AUTO_SIZE_CLAMP.min, Math.min(AUTO_SIZE_CLAMP.max, frac));
 }

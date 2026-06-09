@@ -1,4 +1,5 @@
 import { forwardRef, useRef } from "react";
+import { usePointerDrag } from "../hooks/usePointerDrag";
 
 // Hintergrundbild: füllt die Stage (cover) und lässt sich verschieben, falls es
 // in einer Achse übersteht. Umsetzung über object-position (0..100 %).
@@ -19,30 +20,26 @@ export const BackgroundLayer = forwardRef<HTMLImageElement, Props>(function Back
   ref,
 ) {
   const start = useRef<{ px: number; py: number; pos: Pos }>({ px: 0, py: 0, pos });
-
   const clamp = (v: number) => Math.min(100, Math.max(0, v));
 
-  const onMove = (e: PointerEvent) => {
-    const stage = stageRef.current;
-    if (!stage) return;
-    const rect = stage.getBoundingClientRect();
-    const dx = (e.clientX - start.current.px) / rect.width;
-    const dy = (e.clientY - start.current.py) / rect.height;
-    onChange({
-      x: clamp(start.current.pos.x - dx * 100),
-      y: clamp(start.current.pos.y - dy * 100),
-    });
-  };
-
-  const onUp = () => {
-    window.removeEventListener("pointermove", onMove);
-    window.removeEventListener("pointerup", onUp);
-  };
+  const startDrag = usePointerDrag({
+    onMove: (e) => {
+      const stage = stageRef.current;
+      if (!stage) return;
+      const rect = stage.getBoundingClientRect();
+      const dx = (e.clientX - start.current.px) / rect.width;
+      const dy = (e.clientY - start.current.py) / rect.height;
+      // Bild mit dem Finger mitziehen → object-position gegenläufig.
+      onChange({
+        x: clamp(start.current.pos.x - dx * 100),
+        y: clamp(start.current.pos.y - dy * 100),
+      });
+    },
+  });
 
   const onPointerDown = (e: React.PointerEvent) => {
     start.current = { px: e.clientX, py: e.clientY, pos };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
+    startDrag(e);
   };
 
   return (

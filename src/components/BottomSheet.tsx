@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { usePointerDrag } from "../hooks/usePointerDrag";
 
 // Mobile: Controls als Bottom-Sheet, das größtenteils verborgen ist und per
 // Griff hoch-/runtergezogen (oder getippt) wird. Auf Desktop (kein Sheet)
@@ -21,20 +22,19 @@ export function BottomSheet({ warn, children }: { warn: boolean; children: React
     return () => m.removeEventListener("change", onChange);
   }, []);
 
-  const onMove = (e: PointerEvent) => setDrag(e.clientY - startY.current);
-  const onUp = (e: PointerEvent) => {
-    const d = e.clientY - startY.current;
-    if (Math.abs(d) < 6) setOpen((o) => !o);
-    else if (d < -40) setOpen(true);
-    else if (d > 40) setOpen(false);
-    setDrag(null);
-    window.removeEventListener("pointermove", onMove);
-    window.removeEventListener("pointerup", onUp);
-  };
+  const startDrag = usePointerDrag({
+    onMove: (e) => setDrag(e.clientY - startY.current),
+    onEnd: (e) => {
+      const d = e.clientY - startY.current;
+      if (Math.abs(d) < 6) setOpen((o) => !o);
+      else if (d < -40) setOpen(true);
+      else if (d > 40) setOpen(false);
+      setDrag(null);
+    },
+  });
   const onDown = (e: React.PointerEvent) => {
     startY.current = e.clientY;
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
+    startDrag(e);
   };
 
   let style: React.CSSProperties = {};

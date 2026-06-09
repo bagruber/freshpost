@@ -94,7 +94,7 @@ const HUE = buildHueLUTs();
 //   f(x) = x + sin(2πx)/(2π) · (−A·edge + C·mid)
 //   edge = 1 − exp(−22·d²)  → 0 in der Mitte, →1 an den Rändern (S-Kurve)
 //   mid  = exp(−40·d²)      → schmales Mittenband (minimaler Decontrast)
-function buildCurveLUT(cv: number): Float32Array {
+export function buildCurveLUT(cv: number): Float32Array {
   const curvLUT = new Float32Array(256);
   const A = cv * 0.65; // Kontrast-Stärke
   const C = cv * 0.06; // Mid-Decontrast (bewusst klein)

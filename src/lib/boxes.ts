@@ -2,10 +2,11 @@ import type { Claim, StickerStyle } from "./types";
 import { splitLines } from "./measure";
 
 // Gemeinsame Stack-Geometrie für Rendering (ClaimGroup) und Auto-Größe (layout).
-// Jede Sektion (oben/main/unten) ist EINE Box mit einem durchgehenden
-// Hintergrund; Zeilen darin stehen mit enger Zeilenhöhe übereinander. So
-// schneidet kein Hintergrund in fremden Text, und gleichfarbiger Leerraum
-// zwischen Zeilen entfällt.
+// Jede Zeile einer Sektion ist eine eigene Box mit eigener Breite (ragged).
+// Innerhalb einer Sektion überlappen die Boxen nur im Padding-Bereich, sodass
+// keine Box in fremden Text schneidet, sie aber gleichfarbig verschmelzen. Der
+// Schatten liegt pro Sektion auf dem Wrapper (drop-shadow um die Silhouette),
+// nicht auf einzelnen Boxen — also kein Schatten innerhalb einer Sektion.
 
 export type Segment = "upper" | "main" | "lower";
 
@@ -20,12 +21,15 @@ export type SegBox = {
   overlapTop: number; // negativer Top-Margin relativ zur eigenen Schrift (Sektionsgrenze)
 };
 
-// Box-Geometrie (relativ zur Schriftgröße).
+// Box-Geometrie (relativ zur Schriftgröße / em).
 export const PAD_X = 0.42; // je Seite
 export const PAD_Y = 0.16; // oben/unten
-export const LINE_TIGHT = 0.86; // enge Zeilenhöhe innerhalb einer Sektion
+export const LINE_TIGHT = 0.84; // enge Zeilenhöhe je Box
+export const OVERLAP_WITHIN = 0.22; // Zeilen einer Sektion (nur im Padding, kein Textschnitt)
 export const OVERLAP_BETWEEN = 0.1; // leichte Annäherung an Sektionsgrenzen
 export const BOX_W_PAD = 2 * PAD_X;
+
+const BOX_H = LINE_TIGHT + 2 * PAD_Y; // Höhe einer Zeilen-Box in font-Einheiten
 
 const MAIN_WEIGHT = 800;
 const SEC_WEIGHT = 700;
@@ -72,7 +76,8 @@ export function buildSegments(claim: Claim, secScale: number): SegBox[] {
   return segs;
 }
 
-// Höhe einer Sektionsbox in font-Einheiten (eigene Schrift).
+// Höhe einer Sektion in font-Einheiten (eigene Schrift): erste Zeilen-Box voll,
+// jede weitere abzüglich der Within-Überlappung.
 export function segUnitHeight(lines: number): number {
-  return lines * LINE_TIGHT + 2 * PAD_Y;
+  return BOX_H + (lines - 1) * (BOX_H - OVERLAP_WITHIN);
 }

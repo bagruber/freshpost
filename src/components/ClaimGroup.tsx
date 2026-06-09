@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef } from "react";
 import type { Claim } from "../lib/types";
 import { STYLE_BG, STYLE_FG } from "../lib/types";
 import type { Dimension } from "../lib/dimensions";
-import { buildSegments, PAD_X, PAD_Y, LINE_TIGHT } from "../lib/boxes";
+import { buildSegments, PAD_X, PAD_Y, LINE_TIGHT, OVERLAP_WITHIN } from "../lib/boxes";
 import { useDrag } from "../hooks/useDrag";
 
 // Stack aus Sektionsboxen (oben / main / unten). Jede Sektion ist eine Box mit
@@ -51,14 +51,11 @@ export function ClaimGroup({ claim, mainSize, dimension, stageRef, onDrag, onMea
         return (
           <div
             key={seg.segment}
-            className="claim-box"
+            className="claim-seg"
             style={{
-              background: STYLE_BG[seg.style],
-              color: STYLE_FG[seg.style],
               fontSize: fontPx,
               fontWeight: seg.weight,
               lineHeight: LINE_TIGHT,
-              padding: `${fontPx * PAD_Y}px ${fontPx * PAD_X}px`,
               marginTop: i === 0 ? 0 : -fontPx * seg.overlapTop,
               transform: shift ? `translateX(${shift}px)` : undefined,
               textTransform: seg.cap ? "uppercase" : "none",
@@ -66,7 +63,18 @@ export function ClaimGroup({ claim, mainSize, dimension, stageRef, onDrag, onMea
             }}
           >
             {seg.lines.map((line, j) => (
-              <div key={j}>{line}</div>
+              <div
+                key={j}
+                className="claim-box"
+                style={{
+                  background: STYLE_BG[seg.style],
+                  color: STYLE_FG[seg.style],
+                  padding: `${PAD_Y}em ${PAD_X}em`,
+                  marginTop: j === 0 ? 0 : `-${OVERLAP_WITHIN}em`,
+                }}
+              >
+                {line}
+              </div>
             ))}
           </div>
         );

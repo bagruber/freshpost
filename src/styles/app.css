@@ -174,12 +174,19 @@ body {
 }
 .claim-group:active { cursor: grabbing; }
 
+/* Sektion: Wrapper um die Zeilen-Boxen. Schatten als drop-shadow um die
+   gemeinsame Silhouette → ein Schatten pro Sektion, keiner innerhalb. */
+.claim-seg {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  filter: drop-shadow(0 0.06em 0.16em rgba(0, 0, 0, 0.32));
+}
+
 .claim-box {
   white-space: nowrap; /* echte Umbrüche nur über die Eingabe */
   border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-sticker);
 }
-.claim-box > div { white-space: nowrap; }
 
 .grade-block {
   display: flex;
