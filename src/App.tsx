@@ -12,7 +12,8 @@ import { useIllustration } from "./hooks/useIllustration";
 import { DEFAULT_DIMENSION, getDimension } from "./lib/dimensions";
 import { autoMainSize } from "./lib/layout";
 import { extents, clampToCanvas, violatesSafe, type Size, type Pos } from "./lib/geometry";
-import { exportStageToJpg } from "./lib/exportImage";
+import { renderStageToJpg, downloadBlob, shareBlob, canShareJpg } from "./lib/exportImage";
+import { loadDraft, saveDraft } from "./lib/draft";
 import { IMAGE_ERROR_TEXT, ACCEPTED_TYPES } from "./lib/image";
 import { ILLU_ERROR_TEXT, ILLU_TYPES } from "./lib/illustration";
 import { PERSON_TYPES, PERSON_ERROR_TEXT } from "./lib/personImage";
@@ -23,28 +24,34 @@ const rnd = (range: number) => Math.round((Math.random() * 2 - 1) * range * 100)
 const randomTilt = () => rnd(RANDOM.tiltDeg);
 const randomOffset = () => rnd(RANDOM.offset);
 
+const defaultClaim = (): Claim => ({
+  upper: "", main: "", lower: "",
+  capUpper: true, capMain: true, capLower: true,
+  upperStyle: "white", mainStyle: "rose", lowerStyle: "white",
+  tilt: randomTilt(),
+  mainSize: DEFAULTS.mainSize,
+  stdScale: DEFAULTS.stdScale,
+  secScale: SEC_MAX,
+  upperOffset: randomOffset(),
+  lowerOffset: randomOffset(),
+  x: 0.5, y: DEFAULTS.claimY,
+});
+
+// Entwurf vom letzten Besuch (ohne Bilder) — einmal beim Start gelesen.
+const draft = loadDraft();
+const shareSupported = canShareJpg();
+
 export default function App() {
-  const [dimensionKey, setDimensionKey] = useState(DEFAULT_DIMENSION.key);
-  const [advanced, setAdvanced] = useState(false);
+  const [dimensionKey, setDimensionKey] = useState(draft?.dimensionKey ?? DEFAULT_DIMENSION.key);
+  const [advanced, setAdvanced] = useState(draft?.advanced ?? false);
   const [exporting, setExporting] = useState(false);
   const [fontsReady, setFontsReady] = useState(false);
   const [groupSize, setGroupSize] = useState<Size>({ w: 0, h: 0 });
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [mode, setMode] = useState<Mode>("photo");
-  const [bgPattern, setBgPattern] = useState<BgPattern>("paper");
-  const [claim, setClaim] = useState<Claim>({
-    upper: "", main: "", lower: "",
-    capUpper: true, capMain: true, capLower: true,
-    upperStyle: "white", mainStyle: "rose", lowerStyle: "white",
-    tilt: randomTilt(),
-    mainSize: DEFAULTS.mainSize,
-    stdScale: DEFAULTS.stdScale,
-    secScale: SEC_MAX,
-    upperOffset: randomOffset(),
-    lowerOffset: randomOffset(),
-    x: 0.5, y: DEFAULTS.claimY,
-  });
+  const [mode, setMode] = useState<Mode>(draft?.mode ?? "photo");
+  const [bgPattern, setBgPattern] = useState<BgPattern>(draft?.bgPattern ?? "paper");
+  const [claim, setClaim] = useState<Claim>(() => ({ ...defaultClaim(), ...draft?.claim }));
 
   const stageRef = useRef<HTMLDivElement>(null);
   const dimension = getDimension(dimensionKey);
@@ -56,6 +63,15 @@ export default function App() {
   useEffect(() => {
     document.fonts.ready.then(() => setFontsReady(true));
   }, []);
+
+  // Entwurf debounced sichern (ohne Bilddaten).
+  useEffect(() => {
+    const t = setTimeout(
+      () => saveDraft({ claim, mode, bgPattern, dimensionKey, advanced }),
+      400,
+    );
+    return () => clearTimeout(t);
+  }, [claim, mode, bgPattern, dimensionKey, advanced]);
 
   // Effektive Main-Größe wird abgeleitet (nicht gespeichert): Standard = auto
   // an die Safety-Zone, Advanced = manueller Wert.
@@ -125,14 +141,16 @@ export default function App() {
     [claim.x, claim.y, ext, dimension],
   );
 
-  const handleExport = async () => {
+  const handleExport = async (share: boolean) => {
     const stage = stageRef.current;
     if (!stage) return;
     setExporting(true);
     try {
       const restore = await photo.swapFullForExport();
-      await exportStageToJpg(stage, dimension.width, dimension.height, `freshpost-${dimension.key}.jpg`);
+      const blob = await renderStageToJpg(stage, dimension.width, dimension.height);
       restore();
+      const filename = `freshpost-${dimension.key}.jpg`;
+      if (!share || !(await shareBlob(blob, filename))) downloadBlob(blob, filename);
     } finally {
       setExporting(false);
     }
@@ -143,9 +161,24 @@ export default function App() {
       <BottomSheet
         warn={warnSafeZone}
         header={
-          <button className="btn-primary sheet-export" onClick={handleExport} disabled={exporting}>
-            {exporting ? "Exportiere…" : "JPG exportieren"}
-          </button>
+          <div className="export-row">
+            <button
+              className="btn-primary sheet-export"
+              onClick={() => handleExport(shareSupported)}
+              disabled={exporting}
+            >
+              {exporting ? "Exportiere…" : shareSupported ? "Teilen" : "JPG exportieren"}
+            </button>
+            {shareSupported && (
+              <button
+                className="btn-secondary sheet-export"
+                onClick={() => handleExport(false)}
+                disabled={exporting}
+              >
+                JPG speichern
+              </button>
+            )}
+          </div>
         }
       >
         <Controls

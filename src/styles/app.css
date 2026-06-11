@@ -70,6 +70,7 @@ body {
   padding: var(--space-2) var(--space-4);
   font-size: 0.85rem;
 }
+.export-row { display: flex; gap: var(--space-2); }
 .sheet-hint { display: none; } /* nur mobil sichtbar */
 
 .controls {
