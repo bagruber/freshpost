@@ -232,27 +232,45 @@ body {
 
 /* Illustrations-Mode: dunkle River-Basis + optionales Muster (Papier/Punkte).
    isolation, damit der Multiply-Blend nur innerhalb wirkt. */
+/* =======================================================================
+   HINTERGRUND-EFFEKTE (Illustrations-Mode) — hier schnell justieren
+   ----------------------------------------------------------------------- */
+:root {
+  /* Basis-Verlauf (dunkler River) */
+  --illu-bg-from: var(--fresh-dark-d);
+  --illu-bg-to: var(--fresh-dark-omega);
+
+  /* Papiertextur: zentrieren (brightness ~0.5 = neutral), Knicke spreizen
+     (contrast), Gesamtstärke (opacity). soft-light hält den Grund dunkel. */
+  --paper-brightness: 0.5;
+  --paper-contrast: 1.9;
+  --paper-opacity: 1;
+
+  /* Punkte-Muster: Gesamtstärke (Detail-Werte in lib/dotPattern.ts). */
+  --dots-opacity: 1;
+}
+/* ===================================================================== */
+
 .illu-bg {
   position: absolute;
   inset: 0;
   isolation: isolate;
-  background: radial-gradient(circle at 50% 32%, var(--fresh-dark-d), var(--fresh-dark-omega));
+  background: radial-gradient(circle at 50% 32%, var(--illu-bg-from), var(--illu-bg-to));
 }
-/* Helle Papiertextur auf dunklem Grund ohne Aufhellen: per brightness auf ~0.5
-   zentrieren und per contrast die Knicke spreizen, dann soft-light — flache
-   Flächen lassen den dunklen Grund unverändert, Knicke werden subtil dunkler. */
 .bg-paper {
   position: absolute;
   inset: 0;
   background-size: cover;
   background-position: center;
-  filter: brightness(0.5) contrast(1.9);
+  filter: brightness(var(--paper-brightness)) contrast(var(--paper-contrast));
   mix-blend-mode: soft-light;
+  opacity: var(--paper-opacity);
 }
 .bg-dots {
   position: absolute;
   inset: 0;
   background-size: cover;
+  opacity: var(--dots-opacity);
 }
 
 /* Ziehbare Illustration mit Sticker-artigem Schatten. */

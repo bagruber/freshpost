@@ -2,6 +2,15 @@
 // einem weichen Feld (mehrere überlagerte Sinuswellen) plus Jitter — also keine
 // linear größer werdenden Punkte, sondern Inseln dichterer/größerer Punkte.
 
+// === Punkt-Muster — hier schnell justieren ===
+const DOTS = {
+  spacing: 20, // Punkte pro Stage-Breite (kleiner = größere Abstände)
+  maxRadius: 0.46, // max. Radius relativ zum Rasterabstand
+  baseAlpha: 0.015, // Grund-Deckkraft der Punkte
+  alphaRange: 0.035, // zusätzliche Deckkraft in dichten Feld-Bereichen
+  color: "120, 210, 204", // RGB, wind-ish
+};
+
 const fract = (v: number) => v - Math.floor(v);
 const rand = (a: number, b: number) => fract(Math.sin(a * 12.9898 + b * 78.233) * 43758.5453);
 
@@ -11,8 +20,8 @@ export function generateDotPattern(width: number, height: number): string {
   canvas.height = height;
   const ctx = canvas.getContext("2d")!;
 
-  const cell = width / 20; // Rasterabstand
-  const maxR = cell * 0.46;
+  const cell = width / DOTS.spacing; // Rasterabstand
+  const maxR = cell * DOTS.maxRadius;
 
   // Weiches organisches Feld 0..1.
   const field = (x: number, y: number) => {
@@ -33,7 +42,7 @@ export function generateDotPattern(width: number, height: number): string {
       if (r < 0.4) continue;
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(120, 210, 204, ${0.025 + f * 0.055})`; // sehr dezent, wind-ish
+      ctx.fillStyle = `rgba(${DOTS.color}, ${DOTS.baseAlpha + f * DOTS.alphaRange})`;
       ctx.fill();
     }
   }

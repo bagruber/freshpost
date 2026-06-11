@@ -19,6 +19,10 @@ export async function exportStageToJpg(
     pixelRatio: 1,
     cacheBust: true,
     backgroundColor: "#132026",
+    // Die Stage ist für die Vorschau herunterskaliert (transform: scale).
+    // Für den Export auf die volle Größe zurücksetzen, sonst landet der Inhalt
+    // skaliert oben links und der Rest füllt sich mit der Hintergrundfarbe.
+    style: { transform: "none", transformOrigin: "top left" },
   });
 
   const blob: Blob = await new Promise((resolve, reject) =>
