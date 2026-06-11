@@ -104,11 +104,21 @@ export default function App() {
   const onReroll = () =>
     patchClaim({ tilt: randomTilt(), upperOffset: randomOffset(), lowerOffset: randomOffset() });
 
+  // Einmaliger Hinweis auf Pan/Zoom nach dem ersten Foto (außerhalb der Stage,
+  // landet nie im Export).
+  const [showPanHint, setShowPanHint] = useState(false);
+  const panHintShown = useRef(false);
+
   const handleFile = async (file?: File) => {
     if (!file) return;
     try {
       if (mode === "photo") {
         await photo.load(file);
+        if (!panHintShown.current) {
+          panHintShown.current = true;
+          setShowPanHint(true);
+          setTimeout(() => setShowPanHint(false), 5000);
+        }
       } else if (mode === "illustration") {
         await illu.load(file);
       } else {
@@ -269,6 +279,7 @@ export default function App() {
               <span className="dz-plus">＋</span>
               {mode === "photo" ? "Foto hinzufügen" : mode === "illustration" ? "Illustration hinzufügen" : "Person-PNG hinzufügen"}
               <span className="dz-hint">klicken oder hierher ziehen</span>
+              <span className="dz-hint">Modus (Foto · Illustration · Person) im Bedienfeld wechseln</span>
             </button>
           )}
           <ClaimGroup
@@ -280,6 +291,11 @@ export default function App() {
             onMeasure={handleMeasure}
           />
         </Stage>
+        {showPanHint && mode === "photo" && photo.hasBackground && (
+          <div className="pan-hint" aria-hidden>
+            Foto ziehen &amp; zoomen, um den Ausschnitt zu wählen
+          </div>
+        )}
       </main>
     </div>
   );

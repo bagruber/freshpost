@@ -8,8 +8,9 @@ import { DEFAULTS } from "../lib/config";
 // Kompletter Person-Modus-Zustand: freigestelltes PNG/WebP, Look, Rahmen-
 // Settings, CI-Recolor (async nachgeladen), Drag/Clamp und Measure-Dedupe.
 
-// S/W + River-Tint als CSS-Farbfilter (Person-Look).
-const BWRIVER_FILTER = "grayscale(1) brightness(1.05) sepia(1) hue-rotate(155deg) saturate(2.2)";
+// S/W + River-Tint als CSS-Farbfilter (Person-Look). Exportiert für die
+// Look-Vorschau-Kacheln in PersonControls.
+export const BWRIVER_FILTER = "grayscale(1) brightness(1.05) sepia(1) hue-rotate(155deg) saturate(2.2)";
 const FRAME_HEX: Record<FrameColor, string> = { white: "#ffffff", river: "#466e7f" };
 
 export type Person = { pngUrl: string; ciUrl: string | null; x: number; y: number; scale: number };

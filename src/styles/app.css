@@ -108,7 +108,103 @@ body {
   font-weight: 700;
   cursor: pointer;
 }
+.mode-toggle button { font-size: 0.8rem; }
 .mode-toggle button.active { background: var(--fresh-rose); color: var(--color-text-on-rose); }
+
+/* Farb-Chips (Sticker-Farben, Rahmenfarbe). */
+.swatch-row { display: flex; gap: var(--space-2); }
+.swatch {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border-glass);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+.swatch.active {
+  box-shadow: 0 0 0 2px var(--color-bg-surface), 0 0 0 4px var(--fresh-rose);
+  transform: scale(1.08);
+}
+.swatch:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+/* Auswahl-Kacheln (Hintergrundmuster, Person-Look). */
+.tile-row { display: flex; gap: var(--space-2); }
+.tile {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--color-text-tertiary);
+  font: inherit;
+  font-size: 0.7rem;
+}
+.tile-preview {
+  display: block;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  border: 2px solid transparent;
+  background-color: var(--illu-tint);
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+}
+.tile.active { color: var(--color-text-primary); }
+.tile.active .tile-preview { border-color: var(--fresh-rose); }
+/* Muster-Vorschauen: grobe CSS-Annaeherung an die echten Pattern. */
+.tile-paper { filter: brightness(0.5) contrast(1.2); }
+.tile-dots {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.4) 1.2px, transparent 1.7px);
+  background-size: 9px 9px;
+}
+.tile-lines {
+  background-image: repeating-linear-gradient(
+    -4deg,
+    transparent 0 6px,
+    rgba(255, 255, 255, 0.22) 6px 7px
+  );
+}
+.tile-look { background: var(--fresh-dark-b); }
+.tile-look img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.tile-label { text-align: center; }
+
+.btn-upload { text-align: left; }
+
+/* Einmaliger Pan/Zoom-Hinweis über dem Canvas (außerhalb der Stage). */
+.pan-hint {
+  position: absolute;
+  left: 50%;
+  bottom: var(--space-5);
+  transform: translateX(-50%);
+  padding: var(--space-2) var(--space-4);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fresh-dark-omega) 85%, transparent);
+  color: var(--color-text-secondary);
+  font-size: 0.8rem;
+  pointer-events: none;
+  white-space: nowrap;
+  animation: pan-hint-fade 5s forwards;
+  z-index: 10;
+}
+@keyframes pan-hint-fade {
+  0% { opacity: 0; }
+  8% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
 
 .field { display: flex; flex-direction: column; gap: var(--space-1); font-size: 0.85rem; }
 .field > span { color: var(--color-text-secondary); }
@@ -391,6 +487,7 @@ body {
      möglichst viel sichtbar bleibt. Platz unten = Peek-Streifen. */
   .canvas-area { padding: var(--space-2) var(--space-2) 134px; }
   .stage-wrap { align-items: flex-start; }
+  .pan-hint { bottom: 150px; } /* über dem Sheet-Peek */
 
   .controls-shell.as-sheet {
     position: fixed;

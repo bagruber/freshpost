@@ -1,5 +1,5 @@
 import type { Claim, StickerStyle, Mode, BgPattern } from "../lib/types";
-import { STYLES, SEC_MAX, boundaryOk, secondaryStyle } from "../lib/types";
+import { STYLES, STYLE_BG, SEC_MAX, boundaryOk, secondaryStyle } from "../lib/types";
 import { SLIDER } from "../lib/config";
 import { DIMENSIONS, type Dimension } from "../lib/dimensions";
 import { ACCEPTED_TYPES } from "../lib/image";
@@ -11,7 +11,8 @@ import type { PersonState } from "../hooks/usePerson";
 import { PhotoControls, PhotoAdvancedControls } from "./PhotoControls";
 import { IllustrationControls, IllustrationAdvancedControls } from "./IllustrationControls";
 import { PersonControls, PersonAdvancedControls } from "./PersonControls";
-import { Slider, Toggle } from "./inputs";
+import { Slider, Toggle, Swatches, FileButton, type SwatchItem } from "./inputs";
+import paperUrl from "../assets/paper.jpg";
 
 // Gemeinsames Bedien-UI (Mode, Claim, Format, Upload, Advanced-Claim-Regler);
 // mode-spezifische Teile liegen in Photo-/Illustration-/PersonControls.
@@ -51,26 +52,27 @@ const CLEAR_LABEL: Record<Mode, string> = {
   person: "Person entfernen",
 };
 
-function ColorSelect({
-  label, value, isAllowed, onChange,
-}: {
-  label: string;
-  value: StickerStyle;
-  isAllowed: (s: StickerStyle) => boolean;
-  onChange: (s: StickerStyle) => void;
-}) {
-  return (
-    <label className="field">
-      <span>{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value as StickerStyle)}>
-        {STYLES.map((s) => (
-          <option key={s.value} value={s.value} disabled={!isAllowed(s.value)}>
-            {s.label}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
+const MODE_OPTIONS: { value: Mode; label: string }[] = [
+  { value: "photo", label: "Foto" },
+  { value: "illustration", label: "Illustration" },
+  { value: "person", label: "Person" },
+];
+
+const PATTERN_OPTIONS: { value: BgPattern; label: string }[] = [
+  { value: "paper", label: "Papier" },
+  { value: "dots", label: "Punkte" },
+  { value: "lines", label: "Linien" },
+  { value: "none", label: "Keins" },
+];
+
+// Sticker-Farben als Chip-Reihe; verbotene Kombinationen ausgegraut.
+function styleItems(isAllowed: (s: StickerStyle) => boolean): SwatchItem<StickerStyle>[] {
+  return STYLES.map((s) => ({
+    value: s.value,
+    label: s.label,
+    color: STYLE_BG[s.value],
+    disabled: !isAllowed(s.value),
+  }));
 }
 
 export function Controls(props: Props) {
@@ -100,25 +102,46 @@ export function Controls(props: Props) {
     <aside className="controls">
       <h1 className="controls-title">freshpost</h1>
 
-      <label className="field">
+      <div className="field" role="radiogroup" aria-label="Modus">
         <span>Modus</span>
-        <select value={mode} onChange={(e) => onMode(e.target.value as Mode)}>
-          <option value="photo">Foto</option>
-          <option value="illustration">Illustration</option>
-          <option value="person">Person</option>
-        </select>
-      </label>
+        <div className="mode-toggle">
+          {MODE_OPTIONS.map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              role="radio"
+              aria-checked={mode === o.value}
+              className={mode === o.value ? "active" : ""}
+              onClick={() => onMode(o.value)}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {!isPhoto && (
-        <label className="field">
+        <div className="field" role="radiogroup" aria-label="Hintergrund">
           <span>Hintergrund</span>
-          <select value={bgPattern} onChange={(e) => onBgPattern(e.target.value as BgPattern)}>
-            <option value="paper">Papier</option>
-            <option value="dots">Punkte</option>
-            <option value="lines">Linien</option>
-            <option value="none">Keins</option>
-          </select>
-        </label>
+          <div className="tile-row">
+            {PATTERN_OPTIONS.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                role="radio"
+                aria-checked={bgPattern === o.value}
+                className={`tile${bgPattern === o.value ? " active" : ""}`}
+                onClick={() => onBgPattern(o.value)}
+              >
+                <span
+                  className={`tile-preview tile-${o.value}`}
+                  style={o.value === "paper" ? { backgroundImage: `url(${paperUrl})` } : undefined}
+                />
+                <span className="tile-label">{o.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
       <label className="field">
@@ -155,20 +178,13 @@ export function Controls(props: Props) {
       )}
 
       {!advanced && (
-        <label className="field">
-          <span>Farbe</span>
-          <select value={claim.mainStyle} onChange={(e) => setMainStyle(e.target.value as StickerStyle)}>
-            {STYLES.map((s) => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
-          </select>
-        </label>
+        <Swatches label="Farbe" items={styleItems(() => true)} value={claim.mainStyle} onChange={setMainStyle} />
       )}
 
-      <label className="field">
+      <div className="field">
         <span>{UPLOAD_LABEL[mode]}</span>
-        <input type="file" accept={ACCEPT[mode]} onChange={(e) => onFile(e.target.files?.[0])} />
-      </label>
+        <FileButton label="Datei wählen …" accept={ACCEPT[mode]} onFile={onFile} />
+      </div>
       {hasContent && (
         <button className="btn-secondary" onClick={onClear}>{CLEAR_LABEL[mode]}</button>
       )}
@@ -204,15 +220,18 @@ export function Controls(props: Props) {
             onChange={(v) => onClaim({ lowerOffset: v / 100 })} />
 
           {hasUpper && (
-            <ColorSelect label="Farbe Oben" value={claim.upperStyle}
-              isAllowed={(s) => boundaryOk(s, claim.mainStyle)} onChange={(s) => onClaim({ upperStyle: s })} />
+            <Swatches label="Farbe Oben" value={claim.upperStyle}
+              items={styleItems((s) => boundaryOk(s, claim.mainStyle))}
+              onChange={(s) => onClaim({ upperStyle: s })} />
           )}
-          <ColorSelect label="Farbe Claim" value={claim.mainStyle}
-            isAllowed={(s) => (!hasUpper || boundaryOk(claim.upperStyle, s)) && (!hasLower || boundaryOk(claim.lowerStyle, s))}
+          <Swatches label="Farbe Claim" value={claim.mainStyle}
+            items={styleItems((s) =>
+              (!hasUpper || boundaryOk(claim.upperStyle, s)) && (!hasLower || boundaryOk(claim.lowerStyle, s)))}
             onChange={setMainStyle} />
           {hasLower && (
-            <ColorSelect label="Farbe Unten" value={claim.lowerStyle}
-              isAllowed={(s) => boundaryOk(s, claim.mainStyle)} onChange={(s) => onClaim({ lowerStyle: s })} />
+            <Swatches label="Farbe Unten" value={claim.lowerStyle}
+              items={styleItems((s) => boundaryOk(s, claim.mainStyle))}
+              onChange={(s) => onClaim({ lowerStyle: s })} />
           )}
 
           <div className="caps-row">
