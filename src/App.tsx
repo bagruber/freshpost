@@ -1,27 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Stage } from "./components/Stage";
 import { ClaimGroup } from "./components/ClaimGroup";
-import { BackgroundLayer } from "./components/BackgroundLayer";
+import { CanvasBackground } from "./components/CanvasBackground";
 import { IllustrationLayer } from "./components/IllustrationLayer";
 import { PersonLayer } from "./components/PersonLayer";
 import { Controls } from "./components/Controls";
 import { BottomSheet } from "./components/BottomSheet";
-import { useBackgroundImage } from "./hooks/useBackgroundImage";
+import { usePhoto } from "./hooks/usePhoto";
 import { usePerson } from "./hooks/usePerson";
 import { useIllustration } from "./hooks/useIllustration";
 import { DEFAULT_DIMENSION, getDimension } from "./lib/dimensions";
 import { autoMainSize } from "./lib/layout";
 import { extents, clampToCanvas, violatesSafe, type Size, type Pos } from "./lib/geometry";
 import { exportStageToJpg } from "./lib/exportImage";
-import { loadBackgroundImage, IMAGE_ERROR_TEXT, ACCEPTED_TYPES } from "./lib/image";
+import { IMAGE_ERROR_TEXT, ACCEPTED_TYPES } from "./lib/image";
 import { ILLU_ERROR_TEXT, ILLU_TYPES } from "./lib/illustration";
 import { PERSON_TYPES, PERSON_ERROR_TEXT } from "./lib/personImage";
 import { SEC_MAX, secondaryStyle, type Claim, type Mode, type BgPattern } from "./lib/types";
-import { GRADE_BASE, scaleGrade, type Grade } from "./lib/ciFilter";
-import { generateDotPattern } from "./lib/dotPattern";
-import { generateLinePattern } from "./lib/linePattern";
 import { RANDOM, DEFAULTS } from "./lib/config";
-import paperUrl from "./assets/paper.jpg";
 
 const rnd = (range: number) => Math.round((Math.random() * 2 - 1) * range * 100) / 100;
 const randomTilt = () => rnd(RANDOM.tiltDeg);
@@ -33,8 +29,6 @@ export default function App() {
   const [exporting, setExporting] = useState(false);
   const [fontsReady, setFontsReady] = useState(false);
   const [groupSize, setGroupSize] = useState<Size>({ w: 0, h: 0 });
-  const [imgStrength, setImgStrength] = useState(DEFAULTS.imgStrength); // Standard: ein CI-Look-Regler
-  const [gradeAdv, setGradeAdv] = useState<Grade>(() => scaleGrade(GRADE_BASE, DEFAULTS.gradeFactor));
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<Mode>("photo");
@@ -55,14 +49,7 @@ export default function App() {
   const stageRef = useRef<HTMLDivElement>(null);
   const dimension = getDimension(dimensionKey);
 
-  // Effektiver Grade: Advanced nutzt die Einzelregler, Standard skaliert den
-  // empfohlenen Look mit dem einen CI-Look-Regler.
-  const grade = useMemo<Grade>(
-    () => (advanced ? gradeAdv : scaleGrade(GRADE_BASE, imgStrength / 100)),
-    [advanced, gradeAdv, imgStrength],
-  );
-  const { bgSrc, hasBackground, imgRef, setImage, swapFullForExport, geom, zoom, pan, setView, transformStyle } =
-    useBackgroundImage(grade, dimension);
+  const photo = usePhoto(advanced, dimension);
   const person = usePerson(dimension);
   const illu = useIllustration(dimension);
 
@@ -85,7 +72,7 @@ export default function App() {
     setAdvanced(on);
     if (on) {
       // Beim Wechsel in Advanced die Regler von den Standard-Werten übernehmen.
-      setGradeAdv(scaleGrade(GRADE_BASE, imgStrength / 100));
+      photo.adoptStandardLook();
       setClaim((c) => ({ ...c, mainSize: autoMainSize(c, dimension) * c.stdScale }));
     } else {
       setClaim((c) => ({
@@ -105,7 +92,7 @@ export default function App() {
     if (!file) return;
     try {
       if (mode === "photo") {
-        setImage(await loadBackgroundImage(file));
+        await photo.load(file);
       } else if (mode === "illustration") {
         await illu.load(file);
       } else {
@@ -120,14 +107,7 @@ export default function App() {
   };
 
   const hasContent =
-    mode === "photo" ? hasBackground : mode === "illustration" ? illu.item != null : person.item != null;
-
-  const patternUrl = useMemo(() => {
-    if (mode === "photo") return null;
-    if (bgPattern === "dots") return generateDotPattern(dimension.width, dimension.height);
-    if (bgPattern === "lines") return generateLinePattern(dimension.width, dimension.height);
-    return null;
-  }, [mode, bgPattern, dimension]);
+    mode === "photo" ? photo.hasBackground : mode === "illustration" ? illu.item != null : person.item != null;
 
   const handleMeasure = useCallback((s: Size) => {
     setGroupSize((p) => (p.w === s.w && p.h === s.h ? p : s));
@@ -150,7 +130,7 @@ export default function App() {
     if (!stage) return;
     setExporting(true);
     try {
-      const restore = await swapFullForExport();
+      const restore = await photo.swapFullForExport();
       await exportStageToJpg(stage, dimension.width, dimension.height, `freshpost-${dimension.key}.jpg`);
       restore();
     } finally {
@@ -173,7 +153,7 @@ export default function App() {
           dimension={dimension}
           advanced={advanced}
           mode={mode}
-          hasBackground={hasBackground}
+          hasBackground={photo.hasBackground}
           hasIllu={illu.item != null}
           illuScale={illu.item?.scale ?? null}
           illuIsSvg={illu.item?.isSvg ?? false}
@@ -185,15 +165,15 @@ export default function App() {
           frameColor={person.frameColor}
           frameThickness={person.frameThickness}
           frameRough={person.frameRough}
-          imgStrength={imgStrength}
-          grade={grade}
+          imgStrength={photo.imgStrength}
+          grade={photo.grade}
           uploadError={uploadError}
           onMode={setMode}
           onBgPattern={setBgPattern}
           onClaim={patchClaim}
           onDimension={setDimensionKey}
           onFile={handleFile}
-          onClearBackground={() => setImage(null)}
+          onClearBackground={photo.clear}
           onClearIllu={illu.clear}
           onClearPerson={person.clear}
           onIlluScale={illu.setScale}
@@ -205,8 +185,8 @@ export default function App() {
           onRecolor={illu.setRecolor}
           onAdvanced={onAdvanced}
           onReroll={onReroll}
-          onImgStrength={setImgStrength}
-          onGrade={(key, v) => setGradeAdv((g) => ({ ...g, [key]: v }))}
+          onImgStrength={photo.setImgStrength}
+          onGrade={photo.setGrade}
         />
       </BottomSheet>
       <main
@@ -230,32 +210,13 @@ export default function App() {
           showSafeZone={!exporting}
           warnSafeZone={warnSafeZone}
           background={
-            mode !== "photo" ? (
-              <div className="illu-bg">
-                {bgPattern === "paper" && (
-                  <div className="bg-paper" style={{ backgroundImage: `url(${paperUrl})` }} />
-                )}
-                {bgPattern === "dots" && patternUrl && (
-                  <div className="bg-dots" style={{ backgroundImage: `url(${patternUrl})` }} />
-                )}
-                {bgPattern === "lines" && patternUrl && (
-                  <div className="bg-lines" style={{ backgroundImage: `url(${patternUrl})` }} />
-                )}
-                <div className="bg-tint" />
-              </div>
-            ) : bgSrc ? (
-              <BackgroundLayer
-                src={bgSrc}
-                imgRef={imgRef}
-                style={transformStyle}
-                stageRef={stageRef}
-                dimension={dimension}
-                geom={geom}
-                zoom={zoom}
-                pan={pan}
-                setView={setView}
-              />
-            ) : null
+            <CanvasBackground
+              mode={mode}
+              bgPattern={bgPattern}
+              dimension={dimension}
+              photo={photo}
+              stageRef={stageRef}
+            />
           }
         >
           {mode === "illustration" && illu.item && illu.displaySrc && (
