@@ -8,12 +8,13 @@ import { Controls } from "./components/Controls";
 import { BottomSheet } from "./components/BottomSheet";
 import { useBackgroundImage } from "./hooks/useBackgroundImage";
 import { usePerson } from "./hooks/usePerson";
+import { useIllustration } from "./hooks/useIllustration";
 import { DEFAULT_DIMENSION, getDimension } from "./lib/dimensions";
 import { autoMainSize } from "./lib/layout";
 import { extents, clampToCanvas, violatesSafe, type Size, type Pos } from "./lib/geometry";
 import { exportStageToJpg } from "./lib/exportImage";
 import { loadBackgroundImage, IMAGE_ERROR_TEXT, ACCEPTED_TYPES } from "./lib/image";
-import { loadIllustration, illuSrc, ILLU_ERROR_TEXT, ILLU_TYPES, type Illu } from "./lib/illustration";
+import { ILLU_ERROR_TEXT, ILLU_TYPES } from "./lib/illustration";
 import { PERSON_TYPES, PERSON_ERROR_TEXT } from "./lib/personImage";
 import { SEC_MAX, secondaryStyle, type Claim, type Mode, type BgPattern } from "./lib/types";
 import { GRADE_BASE, scaleGrade, type Grade } from "./lib/ciFilter";
@@ -37,9 +38,6 @@ export default function App() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<Mode>("photo");
-  const [illu, setIllu] = useState<Illu | null>(null);
-  const [recolor, setRecolor] = useState(true);
-  const [illuSize, setIlluSize] = useState<Size>({ w: 0, h: 0 });
   const [bgPattern, setBgPattern] = useState<BgPattern>("paper");
   const [claim, setClaim] = useState<Claim>({
     upper: "", main: "", lower: "",
@@ -66,6 +64,7 @@ export default function App() {
   const { bgSrc, hasBackground, imgRef, setImage, swapFullForExport, geom, zoom, pan, setView, transformStyle } =
     useBackgroundImage(grade, dimension);
   const person = usePerson(dimension);
+  const illu = useIllustration(dimension);
 
   useEffect(() => {
     document.fonts.ready.then(() => setFontsReady(true));
@@ -108,8 +107,7 @@ export default function App() {
       if (mode === "photo") {
         setImage(await loadBackgroundImage(file));
       } else if (mode === "illustration") {
-        const loaded = await loadIllustration(file);
-        setIllu({ ...loaded, x: 0.5, y: 0.5, scale: DEFAULTS.illuScale });
+        await illu.load(file);
       } else {
         await person.load(file);
       }
@@ -121,15 +119,8 @@ export default function App() {
     }
   };
 
-  const illuDisplaySrc = useMemo(() => (illu ? illuSrc(illu, recolor) : null), [illu, recolor]);
-  const illuExt = useMemo(() => extents(illuSize, 0, dimension), [illuSize, dimension]);
-  const onIlluDrag = (raw: Pos) => {
-    const p = clampToCanvas(raw, illuExt);
-    setIllu((i) => (i ? { ...i, x: p.x, y: p.y } : i));
-  };
-
   const hasContent =
-    mode === "photo" ? hasBackground : mode === "illustration" ? illu != null : person.item != null;
+    mode === "photo" ? hasBackground : mode === "illustration" ? illu.item != null : person.item != null;
 
   const patternUrl = useMemo(() => {
     if (mode === "photo") return null;
@@ -140,11 +131,6 @@ export default function App() {
 
   const handleMeasure = useCallback((s: Size) => {
     setGroupSize((p) => (p.w === s.w && p.h === s.h ? p : s));
-  }, []);
-
-  // Dedupe wie beim Claim — sonst Endlosschleife (setState im Layout-Effekt).
-  const handleIlluMeasure = useCallback((s: Size) => {
-    setIlluSize((p) => (p.w === s.w && p.h === s.h ? p : s));
   }, []);
 
   const ext = useMemo(() => extents(groupSize, claim.tilt, dimension), [groupSize, claim.tilt, dimension]);
@@ -188,10 +174,10 @@ export default function App() {
           advanced={advanced}
           mode={mode}
           hasBackground={hasBackground}
-          hasIllu={illu != null}
-          illuScale={illu?.scale ?? null}
-          illuIsSvg={illu?.isSvg ?? false}
-          recolor={recolor}
+          hasIllu={illu.item != null}
+          illuScale={illu.item?.scale ?? null}
+          illuIsSvg={illu.item?.isSvg ?? false}
+          recolor={illu.recolor}
           bgPattern={bgPattern}
           hasPerson={person.item != null}
           personScale={person.item?.scale ?? null}
@@ -208,15 +194,15 @@ export default function App() {
           onDimension={setDimensionKey}
           onFile={handleFile}
           onClearBackground={() => setImage(null)}
-          onClearIllu={() => setIllu(null)}
+          onClearIllu={illu.clear}
           onClearPerson={person.clear}
-          onIlluScale={(v) => setIllu((i) => (i ? { ...i, scale: v } : i))}
+          onIlluScale={illu.setScale}
           onPersonScale={person.setScale}
           onPersonLook={person.setLook}
           onFrameColor={person.setFrameColor}
           onFrameThickness={person.setFrameThickness}
           onFrameRough={person.setFrameRough}
-          onRecolor={setRecolor}
+          onRecolor={illu.setRecolor}
           onAdvanced={onAdvanced}
           onReroll={onReroll}
           onImgStrength={setImgStrength}
@@ -272,16 +258,16 @@ export default function App() {
             ) : null
           }
         >
-          {mode === "illustration" && illu && illuDisplaySrc && (
+          {mode === "illustration" && illu.item && illu.displaySrc && (
             <IllustrationLayer
-              src={illuDisplaySrc}
-              x={illu.x}
-              y={illu.y}
-              scale={illu.scale}
+              src={illu.displaySrc}
+              x={illu.item.x}
+              y={illu.item.y}
+              scale={illu.item.scale}
               dimension={dimension}
               stageRef={stageRef}
-              onDrag={onIlluDrag}
-              onMeasure={handleIlluMeasure}
+              onDrag={illu.onDrag}
+              onMeasure={illu.onMeasure}
             />
           )}
           {mode === "person" && person.item && person.displaySrc && (
