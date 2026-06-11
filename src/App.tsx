@@ -7,25 +7,20 @@ import { PersonLayer } from "./components/PersonLayer";
 import { Controls } from "./components/Controls";
 import { BottomSheet } from "./components/BottomSheet";
 import { useBackgroundImage } from "./hooks/useBackgroundImage";
+import { usePerson } from "./hooks/usePerson";
 import { DEFAULT_DIMENSION, getDimension } from "./lib/dimensions";
 import { autoMainSize } from "./lib/layout";
 import { extents, clampToCanvas, violatesSafe, type Size, type Pos } from "./lib/geometry";
 import { exportStageToJpg } from "./lib/exportImage";
 import { loadBackgroundImage, IMAGE_ERROR_TEXT, ACCEPTED_TYPES } from "./lib/image";
 import { loadIllustration, illuSrc, ILLU_ERROR_TEXT, ILLU_TYPES, type Illu } from "./lib/illustration";
-import { loadPersonFile, recolorPersonToCI, PERSON_TYPES, PERSON_ERROR_TEXT } from "./lib/personImage";
-import { SEC_MAX, secondaryStyle, type Claim, type Mode, type BgPattern, type PersonLook, type FrameColor } from "./lib/types";
+import { PERSON_TYPES, PERSON_ERROR_TEXT } from "./lib/personImage";
+import { SEC_MAX, secondaryStyle, type Claim, type Mode, type BgPattern } from "./lib/types";
 import { GRADE_BASE, scaleGrade, type Grade } from "./lib/ciFilter";
 import { generateDotPattern } from "./lib/dotPattern";
 import { generateLinePattern } from "./lib/linePattern";
 import { RANDOM, DEFAULTS } from "./lib/config";
 import paperUrl from "./assets/paper.jpg";
-
-// S/W + River-Tint als CSS-Farbfilter (Person-Look).
-const BWRIVER_FILTER = "grayscale(1) brightness(1.05) sepia(1) hue-rotate(155deg) saturate(2.2)";
-const FRAME_HEX: Record<FrameColor, string> = { white: "#ffffff", river: "#466e7f" };
-
-type Person = { pngUrl: string; ciUrl: string | null; x: number; y: number; scale: number };
 
 const rnd = (range: number) => Math.round((Math.random() * 2 - 1) * range * 100) / 100;
 const randomTilt = () => rnd(RANDOM.tiltDeg);
@@ -46,12 +41,6 @@ export default function App() {
   const [recolor, setRecolor] = useState(true);
   const [illuSize, setIlluSize] = useState<Size>({ w: 0, h: 0 });
   const [bgPattern, setBgPattern] = useState<BgPattern>("paper");
-  const [person, setPerson] = useState<Person | null>(null);
-  const [personLook, setPersonLook] = useState<PersonLook>("original");
-  const [frameColor, setFrameColor] = useState<FrameColor>("white");
-  const [frameThickness, setFrameThickness] = useState(DEFAULTS.frameThickness);
-  const [frameRough, setFrameRough] = useState(DEFAULTS.frameRough);
-  const [personSize, setPersonSize] = useState<Size>({ w: 0, h: 0 });
   const [claim, setClaim] = useState<Claim>({
     upper: "", main: "", lower: "",
     capUpper: true, capMain: true, capLower: true,
@@ -76,6 +65,7 @@ export default function App() {
   );
   const { bgSrc, hasBackground, imgRef, setImage, swapFullForExport, geom, zoom, pan, setView, transformStyle } =
     useBackgroundImage(grade, dimension);
+  const person = usePerson(dimension);
 
   useEffect(() => {
     document.fonts.ready.then(() => setFontsReady(true));
@@ -121,11 +111,7 @@ export default function App() {
         const loaded = await loadIllustration(file);
         setIllu({ ...loaded, x: 0.5, y: 0.5, scale: DEFAULTS.illuScale });
       } else {
-        const pngUrl = await loadPersonFile(file);
-        setPerson({ pngUrl, ciUrl: null, x: 0.5, y: 0.5, scale: DEFAULTS.personScale });
-        recolorPersonToCI(pngUrl)
-          .then((ciUrl) => setPerson((p) => (p && p.pngUrl === pngUrl ? { ...p, ciUrl } : p)))
-          .catch(() => {});
+        await person.load(file);
       }
       setUploadError(null);
     } catch (e) {
@@ -142,15 +128,8 @@ export default function App() {
     setIllu((i) => (i ? { ...i, x: p.x, y: p.y } : i));
   };
 
-  const personSrc = person ? (personLook === "ci" ? person.ciUrl ?? person.pngUrl : person.pngUrl) : null;
-  const personExt = useMemo(() => extents(personSize, 0, dimension), [personSize, dimension]);
-  const onPersonDrag = (raw: Pos) => {
-    const p = clampToCanvas(raw, personExt);
-    setPerson((i) => (i ? { ...i, x: p.x, y: p.y } : i));
-  };
-
   const hasContent =
-    mode === "photo" ? hasBackground : mode === "illustration" ? illu != null : person != null;
+    mode === "photo" ? hasBackground : mode === "illustration" ? illu != null : person.item != null;
 
   const patternUrl = useMemo(() => {
     if (mode === "photo") return null;
@@ -166,9 +145,6 @@ export default function App() {
   // Dedupe wie beim Claim — sonst Endlosschleife (setState im Layout-Effekt).
   const handleIlluMeasure = useCallback((s: Size) => {
     setIlluSize((p) => (p.w === s.w && p.h === s.h ? p : s));
-  }, []);
-  const handlePersonMeasure = useCallback((s: Size) => {
-    setPersonSize((p) => (p.w === s.w && p.h === s.h ? p : s));
   }, []);
 
   const ext = useMemo(() => extents(groupSize, claim.tilt, dimension), [groupSize, claim.tilt, dimension]);
@@ -217,12 +193,12 @@ export default function App() {
           illuIsSvg={illu?.isSvg ?? false}
           recolor={recolor}
           bgPattern={bgPattern}
-          hasPerson={person != null}
-          personScale={person?.scale ?? null}
-          personLook={personLook}
-          frameColor={frameColor}
-          frameThickness={frameThickness}
-          frameRough={frameRough}
+          hasPerson={person.item != null}
+          personScale={person.item?.scale ?? null}
+          personLook={person.look}
+          frameColor={person.frameColor}
+          frameThickness={person.frameThickness}
+          frameRough={person.frameRough}
           imgStrength={imgStrength}
           grade={grade}
           uploadError={uploadError}
@@ -233,13 +209,13 @@ export default function App() {
           onFile={handleFile}
           onClearBackground={() => setImage(null)}
           onClearIllu={() => setIllu(null)}
-          onClearPerson={() => setPerson(null)}
+          onClearPerson={person.clear}
           onIlluScale={(v) => setIllu((i) => (i ? { ...i, scale: v } : i))}
-          onPersonScale={(v) => setPerson((i) => (i ? { ...i, scale: v } : i))}
-          onPersonLook={setPersonLook}
-          onFrameColor={setFrameColor}
-          onFrameThickness={setFrameThickness}
-          onFrameRough={setFrameRough}
+          onPersonScale={person.setScale}
+          onPersonLook={person.setLook}
+          onFrameColor={person.setFrameColor}
+          onFrameThickness={person.setFrameThickness}
+          onFrameRough={person.setFrameRough}
           onRecolor={setRecolor}
           onAdvanced={onAdvanced}
           onReroll={onReroll}
@@ -308,20 +284,20 @@ export default function App() {
               onMeasure={handleIlluMeasure}
             />
           )}
-          {mode === "person" && person && personSrc && (
+          {mode === "person" && person.item && person.displaySrc && (
             <PersonLayer
-              src={personSrc}
-              lookFilter={personLook === "bwriver" ? BWRIVER_FILTER : ""}
-              frameColor={FRAME_HEX[frameColor]}
-              thickness={frameThickness}
-              rough={frameRough}
-              x={person.x}
-              y={person.y}
-              scale={person.scale}
+              src={person.displaySrc}
+              lookFilter={person.lookFilter}
+              frameColor={person.frameHex}
+              thickness={person.frameThickness}
+              rough={person.frameRough}
+              x={person.item.x}
+              y={person.item.y}
+              scale={person.item.scale}
               dimension={dimension}
               stageRef={stageRef}
-              onDrag={onPersonDrag}
-              onMeasure={handlePersonMeasure}
+              onDrag={person.onDrag}
+              onMeasure={person.onMeasure}
             />
           )}
           {/* Dropzone liegt im Stage unter dem Claim (stage-relativ skaliert)
