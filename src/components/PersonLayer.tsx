@@ -22,6 +22,14 @@ type Props = {
   onMeasure: (size: { w: number; h: number }) => void;
 };
 
+// === Frame-Tuning (rauer Sticker-Rand) ===
+// Alpha-Schwelle: ab welcher Deckkraft zählt ein Pixel als "voll". 10 Werte →
+// Grenze bei k/10; "...0 1 1 1" = ~0.7 (unscharfe Ränder/Halos fallen weg).
+const ALPHA_STEP = "0 0 0 0 0 0 0 1 1 1";
+const ROUND_STEP = "0 0 0 0 0 1 1 1 1 1"; // Re-Schwelle nach Blur (~0.5)
+const ROUND_BLUR = 3; // Eckenrundung (höher = runder)
+const TURB_FREQ = 0.008; // niedriger = größere, weichere Wellen (weniger Ecken)
+
 export function PersonLayer({
   src, lookFilter, frameColor, thickness, rough, x, y, scale, dimension, stageRef, onDrag, onMeasure,
 }: Props) {
@@ -52,12 +60,24 @@ export function PersonLayer({
       }}
     >
       <svg width="0" height="0" aria-hidden style={{ position: "absolute" }}>
-        <filter id={fid} x="-35%" y="-35%" width="170%" height="170%" colorInterpolationFilters="sRGB">
-          <feMorphology in="SourceAlpha" operator="dilate" radius={thickness} result="dil" />
-          <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="2" seed="7" result="noise" />
-          <feDisplacementMap in="dil" in2="noise" scale={rough} result="rough" />
+        <filter id={fid} x="-40%" y="-40%" width="180%" height="180%" colorInterpolationFilters="sRGB">
+          {/* 1. Alpha hart schwellen → unscharfe Kanten/Halos entfernen */}
+          <feComponentTransfer in="SourceAlpha" result="solid">
+            <feFuncA type="discrete" tableValues={ALPHA_STEP} />
+          </feComponentTransfer>
+          {/* 2. dilatieren (Rahmendicke) */}
+          <feMorphology in="solid" operator="dilate" radius={thickness} result="dil" />
+          {/* 3. rough versetzen (gröbere, weiche Turbulenz) */}
+          <feTurbulence type="fractalNoise" baseFrequency={TURB_FREQ} numOctaves="1" seed="7" result="noise" />
+          <feDisplacementMap in="dil" in2="noise" scale={rough} result="disp" />
+          {/* 4. Ecken runden: Blur + erneut schwellen */}
+          <feGaussianBlur in="disp" stdDeviation={ROUND_BLUR} result="blur" />
+          <feComponentTransfer in="blur" result="rounded">
+            <feFuncA type="discrete" tableValues={ROUND_STEP} />
+          </feComponentTransfer>
+          {/* 5. einfärben, Original darüber */}
           <feFlood floodColor={frameColor} result="col" />
-          <feComposite in="col" in2="rough" operator="in" result="frame" />
+          <feComposite in="col" in2="rounded" operator="in" result="frame" />
           <feMerge>
             <feMergeNode in="frame" />
             <feMergeNode in="SourceGraphic" />

@@ -246,9 +246,10 @@ body {
   --paper-contrast: 1.9;
   --paper-opacity: 1;
 
-  /* Punkte-/Linien-Muster: Gesamtstärke (Detail-Werte in lib/*Pattern.ts). */
-  --dots-opacity: 1;
-  --lines-opacity: 1;
+  /* Punkte-/Linien-Muster: Gesamtstärke (Detail-Werte in lib/*Pattern.ts).
+     Niedriger = dunkler/dezenter, weil die hellen Muster weniger aufhellen. */
+  --dots-opacity: 0.5;
+  --lines-opacity: 0.55;
 }
 /* ===================================================================== */
 
