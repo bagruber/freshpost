@@ -35,6 +35,7 @@ type Props = {
   onFile: (file: File | undefined) => void;
   onAdvanced: (on: boolean) => void;
   onReroll: () => void;
+  onRemoveBg: () => void;
   logo: LogoState;
   onLogo: (patch: Partial<LogoState>) => void;
 };
@@ -69,9 +70,8 @@ const PATTERN_OPTIONS: { value: BgPattern; label: string }[] = [
 ];
 
 const CORNER_OPTIONS: { value: LogoCorner; label: string }[] = [
-  { value: "tl", label: "↖" },
-  { value: "tr", label: "↗" },
   { value: "bl", label: "↙" },
+  { value: "bc", label: "↓" },
   { value: "br", label: "↘" },
 ];
 const LOGO_SIZE_LABEL: Record<LogoSize, string> = { s: "Klein", m: "Mittel" };
@@ -89,7 +89,7 @@ function styleItems(isAllowed: (s: StickerStyle) => boolean): SwatchItem<Sticker
 export function Controls(props: Props) {
   const {
     claim, dimension, advanced, mode, bgPattern, uploadError, photo, illu, person,
-    onMode, onBgPattern, onClaim, onDimension, onFile, onAdvanced, onReroll,
+    onMode, onBgPattern, onClaim, onDimension, onFile, onAdvanced, onReroll, onRemoveBg,
     logo, onLogo,
   } = props;
   const isPhoto = mode === "photo";
@@ -269,7 +269,7 @@ export function Controls(props: Props) {
 
       {isPhoto && <PhotoControls photo={photo} advanced={advanced} />}
       {isIllu && <IllustrationControls illu={illu} />}
-      {isPerson && <PersonControls person={person} />}
+      {isPerson && <PersonControls person={person} onRemoveBg={onRemoveBg} />}
 
       <button className="btn-secondary" onClick={onReroll}>Look würfeln</button>
 

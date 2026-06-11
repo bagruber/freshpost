@@ -1,4 +1,4 @@
-import { mapColorToCI } from "./ciColor";
+import { filterImageData, GRADE_BASE, scaleGrade } from "./ciFilter";
 import { MAX_FILE_BYTES } from "./image";
 
 // Personen-Bilder: freigestellte PNGs/WebPs werden direkt übernommen; normale
@@ -60,7 +60,14 @@ export async function needsCutout(file: File): Promise<boolean> {
   }
 }
 
+// === Person-CI-Look — hier schnell justieren ===
+// Stärke des Foto-Color-Grades für den Person-Look (Faktor auf GRADE_BASE).
+// Bewusst der weiche Foto-Filter statt des harten Hue-Snaps aus ciColor.ts —
+// der schob zu viele Gesichtspartien Richtung Burgund.
+const PERSON_GRADE_FACTOR = 1;
+
 // Per-Pixel CI-Recolor einer Data-URL → neue Data-URL (PNG, Alpha erhalten).
+// Nutzt denselben HSV-Grade wie der Foto-Modus (filterImageData behält Alpha).
 export function recolorPersonToCI(src: string): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -72,13 +79,8 @@ export function recolorPersonToCI(src: string): Promise<string> {
       if (!ctx) return reject(new Error("ctx"));
       ctx.drawImage(img, 0, 0);
       const id = ctx.getImageData(0, 0, c.width, c.height);
-      const d = id.data;
-      for (let i = 0; i < d.length; i += 4) {
-        if (d[i + 3] < 8) continue; // (fast) transparent → überspringen
-        const m = mapColorToCI({ r: d[i], g: d[i + 1], b: d[i + 2] });
-        d[i] = m.r; d[i + 1] = m.g; d[i + 2] = m.b;
-      }
-      ctx.putImageData(id, 0, 0);
+      const graded = filterImageData(id, scaleGrade(GRADE_BASE, PERSON_GRADE_FACTOR));
+      ctx.putImageData(graded, 0, 0);
       resolve(c.toDataURL("image/png"));
     };
     img.onerror = () => reject(new Error("decode"));

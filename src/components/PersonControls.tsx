@@ -17,11 +17,19 @@ const FRAME_ITEMS: SwatchItem<FrameColor>[] = [
   { value: "river", label: "River hell", color: "var(--fresh-river-soft)" },
 ];
 
-export function PersonControls({ person }: { person: PersonState }) {
+export function PersonControls({ person, onRemoveBg }: { person: PersonState; onRemoveBg: () => void }) {
   const item = person.item;
   if (!item) return null;
   return (
     <>
+      {item.opaque && (
+        <div className="field">
+          <button className="btn-secondary" onClick={onRemoveBg} disabled={person.busy}>
+            Hintergrund entfernen
+          </button>
+          <span className="field-note">dauert meist 10–30 Sekunden</span>
+        </div>
+      )}
       <div className="field" role="radiogroup" aria-label="Person-Look">
         <span>Person-Look</span>
         <div className="tile-row">

@@ -145,6 +145,16 @@ export default function App() {
   const hasContent =
     mode === "photo" ? photo.hasBackground : mode === "illustration" ? illu.item != null : person.item != null;
 
+  // Freistellen blockiert die UI (Overlay) — Fehler landen im Upload-Feld.
+  const handleRemoveBg = async () => {
+    try {
+      await person.removeBg();
+      setUploadError(null);
+    } catch (e) {
+      setUploadError(PERSON_ERROR_TEXT[e as keyof typeof PERSON_ERROR_TEXT] ?? "Fehler");
+    }
+  };
+
   const handleMeasure = useCallback((s: Size) => {
     setGroupSize((p) => (p.w === s.w && p.h === s.h ? p : s));
   }, []);
@@ -218,6 +228,7 @@ export default function App() {
           onFile={handleFile}
           onAdvanced={onAdvanced}
           onReroll={onReroll}
+          onRemoveBg={handleRemoveBg}
           logo={logo}
           onLogo={patchLogo}
         />
@@ -283,24 +294,16 @@ export default function App() {
           {/* Dropzone liegt im Stage unter dem Claim (stage-relativ skaliert)
               und wird beim Export ausgeblendet. */}
           {!hasContent && !exporting && (
-            mode === "person" && person.busy ? (
-              <div className="canvas-dropzone dz-busy" style={{ fontSize: dimension.width * 0.038 }}>
-                <span className="dz-spinner" />
-                Person wird freigestellt …
-                <span className="dz-hint">beim ersten Mal lädt das Modell — das kann etwas dauern</span>
-              </div>
-            ) : (
-              <button
-                className="canvas-dropzone"
-                style={{ fontSize: dimension.width * 0.038 }}
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <span className="dz-plus">＋</span>
-                {mode === "photo" ? "Foto hinzufügen" : mode === "illustration" ? "Illustration hinzufügen" : "Personen-Foto hinzufügen"}
-                <span className="dz-hint">klicken oder hierher ziehen</span>
-                <span className="dz-hint">Modus (Foto · Illustration · Person) im Bedienfeld wechseln</span>
-              </button>
-            )
+            <button
+              className="canvas-dropzone"
+              style={{ fontSize: dimension.width * 0.038 }}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <span className="dz-plus">＋</span>
+              {mode === "photo" ? "Foto hinzufügen" : mode === "illustration" ? "Illustration hinzufügen" : "Personen-Foto hinzufügen"}
+              <span className="dz-hint">klicken oder hierher ziehen</span>
+              <span className="dz-hint">Modus (Foto · Illustration · Person) im Bedienfeld wechseln</span>
+            </button>
           )}
           <ClaimGroup
             claim={claim}
@@ -320,6 +323,18 @@ export default function App() {
           </div>
         )}
       </main>
+      {/* Freistellen blockiert die ganze App — der Schritt ist nicht abbrechbar. */}
+      {person.busy && (
+        <div className="busy-overlay" role="alert" aria-busy="true">
+          <span className="spinner" />
+          <p className="busy-title">Hintergrund wird entfernt …</p>
+          <p className="busy-hint">
+            dauert meist 10–30 Sekunden — beim ersten Mal länger,
+            <br />
+            weil das Modell einmalig geladen wird (~50 MB)
+          </p>
+        </div>
+      )}
     </div>
   );
 }

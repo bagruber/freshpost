@@ -21,13 +21,13 @@ export function getLogo(key: string | null): LogoOption | null {
   return key ? LOGOS.find((l) => l.key === key) ?? null : null;
 }
 
-export type LogoCorner = "tl" | "tr" | "bl" | "br";
+export type LogoCorner = "bl" | "bc" | "br";
 export type LogoSize = "s" | "m";
 
-// Platzierung bewusst eingeschränkt (CI-Wächter): Ecken der Safety-Zone,
-// zwei seriöse Größen, nicht frei verschiebbar.
+// Platzierung bewusst eingeschränkt (CI-Wächter): unten in der Safety-Zone
+// (links/mittig/rechts), zwei seriöse Größen, nicht frei verschiebbar.
 export type LogoState = { key: string | null; corner: LogoCorner; size: LogoSize };
 
-export const LOGO_CORNERS: LogoCorner[] = ["tl", "tr", "bl", "br"];
+export const LOGO_CORNERS: LogoCorner[] = ["bl", "bc", "br"];
 export const LOGO_SIZES: LogoSize[] = ["s", "m"];
 export const DEFAULT_LOGO: LogoState = { key: null, corner: "br", size: "s" };

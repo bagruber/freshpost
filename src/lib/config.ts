@@ -23,7 +23,7 @@ export const SLIDER = {
 
 // Logo-Sticker: Breite als Bruchteil der Stage-Breite (bewusst nur zwei
 // seriöse Stufen).
-export const LOGO_WIDTH = { s: 0.14, m: 0.2 } as const;
+export const LOGO_WIDTH = { s: 0.11, m: 0.16 } as const;
 
 // Startwerte.
 export const DEFAULTS = {
