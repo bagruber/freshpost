@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
 import { extents, clampToCanvas, type Size, type Pos } from "../lib/geometry";
 import type { Dimension } from "../lib/dimensions";
-import { loadPersonFile, recolorPersonToCI } from "../lib/personImage";
+import { loadPersonFile, needsCutout, recolorPersonToCI, type PersonError } from "../lib/personImage";
+import { removePersonBackground } from "../lib/removeBg";
 import type { PersonLook, FrameColor } from "../lib/types";
 import { DEFAULTS } from "../lib/config";
 
@@ -22,10 +23,23 @@ export function usePerson(dimension: Dimension) {
   const [frameThickness, setFrameThickness] = useState(DEFAULTS.frameThickness);
   const [frameRough, setFrameRough] = useState(DEFAULTS.frameRough);
   const [size, setSize] = useState<Size>({ w: 0, h: 0 });
+  const [busy, setBusy] = useState(false); // Freistellen läuft
 
-  // Wirft PersonError-Keys (siehe PERSON_ERROR_TEXT) — Mapping macht der Aufrufer.
+  // Wirft PersonError-Keys (siehe PERSON_ERROR_TEXT) — Mapping macht der
+  // Aufrufer. Normale Fotos (ohne Transparenz) werden erst im Browser
+  // freigestellt; fertige PNGs/WebPs gehen direkt durch.
   const load = async (file: File) => {
-    const pngUrl = await loadPersonFile(file);
+    let pngUrl = await loadPersonFile(file); // validiert Typ/Größe
+    if (await needsCutout(file)) {
+      setBusy(true);
+      try {
+        pngUrl = await removePersonBackground(file);
+      } catch {
+        throw "removal" satisfies PersonError;
+      } finally {
+        setBusy(false);
+      }
+    }
     setItem({ pngUrl, ciUrl: null, x: 0.5, y: 0.5, scale: DEFAULTS.personScale });
     recolorPersonToCI(pngUrl)
       .then((ciUrl) => setItem((p) => (p && p.pngUrl === pngUrl ? { ...p, ciUrl } : p)))
@@ -47,6 +61,7 @@ export function usePerson(dimension: Dimension) {
 
   return {
     item,
+    busy,
     displaySrc,
     look,
     lookFilter: look === "bwriver" ? BWRIVER_FILTER : "",

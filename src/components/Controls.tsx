@@ -47,7 +47,7 @@ const ACCEPT: Record<Mode, string> = {
 const UPLOAD_LABEL: Record<Mode, string> = {
   photo: "Hintergrundbild",
   illustration: "Illustration (SVG/PNG)",
-  person: "Person (PNG, freigestellt)",
+  person: "Person (Foto oder freigestelltes PNG)",
 };
 const CLEAR_LABEL: Record<Mode, string> = {
   photo: "Bild entfernen",

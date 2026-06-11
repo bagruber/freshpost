@@ -354,6 +354,18 @@ body {
   backdrop-filter: blur(4px);
 }
 .canvas-dropzone:hover { color: var(--color-text-primary); border-color: var(--fresh-rose); }
+/* Freistellen-läuft-Zustand der Dropzone (nicht klickbar). */
+.dz-busy { cursor: default; pointer-events: none; }
+.dz-spinner {
+  width: 1em;
+  height: 1em;
+  border-radius: 999px;
+  border: 0.12em solid var(--color-border-glass);
+  border-top-color: var(--fresh-rose);
+  animation: dz-spin 0.9s linear infinite;
+  margin-bottom: 0.15em;
+}
+@keyframes dz-spin { to { transform: rotate(360deg); } }
 .dz-plus { font-size: 1.5em; line-height: 1; color: var(--fresh-rose); }
 .dz-hint {
   font-family: var(--font-body);

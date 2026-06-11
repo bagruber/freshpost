@@ -283,16 +283,24 @@ export default function App() {
           {/* Dropzone liegt im Stage unter dem Claim (stage-relativ skaliert)
               und wird beim Export ausgeblendet. */}
           {!hasContent && !exporting && (
-            <button
-              className="canvas-dropzone"
-              style={{ fontSize: dimension.width * 0.038 }}
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <span className="dz-plus">＋</span>
-              {mode === "photo" ? "Foto hinzufügen" : mode === "illustration" ? "Illustration hinzufügen" : "Person-PNG hinzufügen"}
-              <span className="dz-hint">klicken oder hierher ziehen</span>
-              <span className="dz-hint">Modus (Foto · Illustration · Person) im Bedienfeld wechseln</span>
-            </button>
+            mode === "person" && person.busy ? (
+              <div className="canvas-dropzone dz-busy" style={{ fontSize: dimension.width * 0.038 }}>
+                <span className="dz-spinner" />
+                Person wird freigestellt …
+                <span className="dz-hint">beim ersten Mal lädt das Modell — das kann etwas dauern</span>
+              </div>
+            ) : (
+              <button
+                className="canvas-dropzone"
+                style={{ fontSize: dimension.width * 0.038 }}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <span className="dz-plus">＋</span>
+                {mode === "photo" ? "Foto hinzufügen" : mode === "illustration" ? "Illustration hinzufügen" : "Personen-Foto hinzufügen"}
+                <span className="dz-hint">klicken oder hierher ziehen</span>
+                <span className="dz-hint">Modus (Foto · Illustration · Person) im Bedienfeld wechseln</span>
+              </button>
+            )
           )}
           <ClaimGroup
             claim={claim}
