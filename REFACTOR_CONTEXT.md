@@ -96,19 +96,21 @@ Repo: `github.com/bagruber/freshpost`, Branch `main`. Vite `base` ist beim Build
 
 ---
 
-## 5. Architektur — Ist-Zustand
+## 5. Architektur — Ist-Zustand (nach Refactor §8, 2026-06-11)
 
-`src/App.tsx` (~352 Zeilen) ist der **zentrale Hub**: hält allen State, leitet
-alles an `Controls` (Eingaben) und `Stage` (Vorschau) weiter. Genau das ist der
-**Hauptgrund für den Refactor** (siehe §8): App trägt Foto-, Illustrations- und
-Person-State plus Claim, Format, Hintergrundmuster, Export nebeneinander.
+`src/App.tsx` (~253 Zeilen) ist nur noch **Orchestrierung**: Mode-Auswahl,
+gemeinsamer Claim-State, Format, Upload-Dispatch, Export, Komposition. Der
+mode-spezifische State lebt in je einem Hook (`usePhoto`, `useIllustration`,
+`usePerson`), deren Rückgabeobjekte als Ganzes an `Controls` und die Layer
+durchgereicht werden.
 
 ### Datenfluss
 ```
-App (state)
- ├─ Controls (im BottomSheet) ── alle Eingaben/Slider/Selects → setter in App
+App (Claim/Mode/Format/Export) + usePhoto/useIllustration/usePerson
+ ├─ Controls (im BottomSheet) ── gemeinsames UI; mode-spezifisch:
+ │    PhotoControls | IllustrationControls | PersonControls (+ je Advanced-Teil)
  └─ Stage (canvas-Vorschau)
-      ├─ background (mode-abhängig): BackgroundLayer | illu-bg(+Muster) 
+      ├─ CanvasBackground (mode-abhängig): BackgroundLayer | illu-bg(+Muster+Tint)
       ├─ IllustrationLayer | PersonLayer (mode-abhängig, ziehbar)
       ├─ Dropzone (wenn kein Content, im Stage, beim Export ausgeblendet)
       └─ ClaimGroup (immer, ziehbar, oben)
@@ -129,20 +131,33 @@ App (state)
 - `BottomSheet.tsx` — mobil: Controls als ziehbares Sheet (Peek/Open), mit
   prominenter „Hier bearbeiten"-Zeile + kompaktem Export-Button im Header;
   Desktop: normale Seitenspalte. Nutzt `usePointerDrag`.
-- `Controls.tsx` (~309 Zeilen) — gesamtes Bedien-UI, mode-abhängig konditional.
+- `Controls.tsx` (~231 Zeilen) — gemeinsames Bedien-UI (Mode, Claim, Format,
+  Upload, Advanced-Claim-Regler); reicht die Hook-States weiter an:
+- `PhotoControls.tsx` / `IllustrationControls.tsx` / `PersonControls.tsx` —
+  je ein Standard-Teil (nach dem Upload-Feld) und ein Advanced-Teil (am Ende
+  des Advanced-Blocks).
+- `CanvasBackground.tsx` — mode-abhängiger Stage-Hintergrund (Foto-Layer |
+  `illu-bg` + Muster + Tint, inkl. Pattern-Generierung).
 - `ClaimGroup.tsx` — der Claim-Stack (oben/main/unten als Sektionsboxen).
 - `BackgroundLayer.tsx` — Foto mit Pan/Zoom (Pinch/Drag/Wheel).
 - `IllustrationLayer.tsx`, `PersonLayer.tsx` — ziehbare Layer.
 - `inputs.tsx` — `<Slider>` und `<Toggle>` (wiederverwendet).
 
 ### Hooks
+- `usePhoto(advanced, dimension)` — Grade-Regler-State (Standard-CI-Look +
+  Advanced-Einzelregler) + `useBackgroundImage`; `load`/`clear`,
+  `adoptStandardLook()` beim Advanced-Wechsel.
 - `useBackgroundImage(grade, dimension)` — **Foto-Pipeline**: Originale als
   `ImageData` in Refs (Voll + Vorschau), gefilterte Vorschau als Data-URL,
   Pan/Zoom-State (cover…1:1, abgeleitet via `clampView`), Export-Swap auf
-  Voll-Res. (Beispiel für das Hook-Muster, das wir auf die anderen Modi
-  übertragen wollen.)
+  Voll-Res.
+- `useIllustration(dimension)` — Illu-State (SVG/PNG), Recolor-Toggle,
+  `displaySrc`, Drag/Clamp, Measure-Dedupe, `load`/`clear`/`setScale`.
+- `usePerson(dimension)` — Person-State, Look (+`lookFilter`), Rahmen
+  (Farbe→`frameHex`, Dicke, Rauheit), async CI-Recolor, Drag/Clamp,
+  Measure-Dedupe, `load`/`clear`/`setScale`.
 - `useDrag(stageRef, onChange)` — Sticker-Drag (Greif-Offset → roher
-  Bruchteil-Mittelpunkt; Clamping macht der Aufrufer in App).
+  Bruchteil-Mittelpunkt; Clamping machen die Mode-Hooks bzw. App beim Claim).
 - `usePointerDrag(handlers)` — Pointer-Primitive (Maus+Touch, onMove/onEnd),
   Basis für `useDrag`, `BackgroundLayer`, `BottomSheet`.
 
@@ -245,9 +260,13 @@ Diese Dinge sind subtil und beim Refactor **leicht kaputtzumachen**:
 
 ---
 
-## 8. Refactor-Auftrag
+## 8. Refactor-Auftrag — ✅ umgesetzt (2026-06-11)
 
-**Problem:** `App.tsx` (~352 Z.) und `Controls.tsx` (~309 Z.) tragen den State
+> Der unten beschriebene Umbau ist abgeschlossen (vier Commits: `usePerson`,
+> `useIllustration`, `usePhoto`+`CanvasBackground`, Controls-Split). §5 zeigt
+> den neuen Ist-Zustand; die Mechaniken aus §6 wurden unverändert übernommen.
+
+**Problem (war):** `App.tsx` (~352 Z.) und `Controls.tsx` (~309 Z.) tragen den State
 und das UI **aller drei Modi** nebeneinander. Mit dem dritten Modus ist die
 Schwelle erreicht, ab der sich ein Umbau lohnt (vom User ausdrücklich gewünscht,
 „behalte den Threshold im Auge").
