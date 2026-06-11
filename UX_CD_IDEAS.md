@@ -1,8 +1,11 @@
 # freshpost — UX-Rethink, Fähigkeiten, CD-Evolution (Vorschläge)
 
-> Ergebnis des Nachdenkens nach dem Struktur-Refactor (2026-06-11). **Nichts
-> hiervon ist umgesetzt** — es ist eine priorisierte Entscheidungsvorlage.
-> Design-Geschmacksfragen (§9 im Refactor-Briefing) bleiben User-Entscheid.
+> Ergebnis des Nachdenkens nach dem Struktur-Refactor (2026-06-11).
+> **Stand 2026-06-12: Pakete 1–5 (§4) sind umgesetzt** — also 1.1, 1.2, 1.3,
+> 1.4a, 1.7, 1.8, 2.1 (Logo) und 2.2 (Freistellen). Offen bleiben: 1.4b
+> (Inline-Edit auf der Stage), 1.5 (Undo), 1.6 (Würfeln mit Vorschau),
+> 2.3 (Vorlagen Termin/Zitat), 2.4 (Presets), 2.5 (Carousel) sowie alle
+> CD-Vorschläge in §3 (Geschmacksentscheid).
 
 Leitbild für alle Vorschläge: **Ehrenamtliche am Handy sollen in unter einer
 Minute ein CI-korrektes Sharepic bauen und direkt teilen können.** Jede Idee

@@ -305,8 +305,10 @@ Schwelle erreicht, ab der sich ein Umbau lohnt (vom User ausdrücklich gewünsch
 
 ## 9. Bekannte offene Punkte / zu verifizieren
 
-- **Export des Person-Frames** (`url(#…)`-SVG-Filter) durch `html-to-image` —
-  visuell im Export prüfen; ggf. Canvas-Fallback.
+- ~~**Export des Person-Frames** (`url(#…)`-SVG-Filter) durch `html-to-image`~~
+  — **verifiziert (2026-06-12):** Frame wird im JPG-Export korrekt gerendert
+  (headless geprüft, Person + rauer weißer Rahmen sichtbar). Kein Canvas-
+  Fallback nötig.
 - **Paper-/Muster-Look** ist subjektiv und monitor-abhängig — Werte sind
   bewusst als Knöpfe ausgelegt; nicht „korrigieren" ohne User-Feedback.
 - **Illustration/Person haben (noch) kein Safety-Zone-Warning** wie der Claim —
