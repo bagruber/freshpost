@@ -27,8 +27,8 @@ type Props = {
 // Grenze bei k/10; "...0 1 1 1" = ~0.7 (unscharfe Ränder/Halos fallen weg).
 const ALPHA_STEP = "0 0 0 0 0 0 0 1 1 1";
 const ROUND_STEP = "0 0 0 0 0 1 1 1 1 1"; // Re-Schwelle nach Blur (~0.5)
-const ROUND_BLUR = 3; // Eckenrundung (höher = runder)
-const TURB_FREQ = 0.008; // niedriger = größere, weichere Wellen (weniger Ecken)
+const ROUND_BLUR = 0.8; // minimale Glättung → Ecken bleiben kantig
+const TURB_FREQ = 0.004; // sehr niedrig → wenige, große Auslenkungen (weniger Ecken)
 
 export function PersonLayer({
   src, lookFilter, frameColor, thickness, rough, x, y, scale, dimension, stageRef, onDrag, onMeasure,

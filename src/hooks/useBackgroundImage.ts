@@ -75,7 +75,7 @@ export function useBackgroundImage(grade: Grade, dimension: Dimension) {
     const full = origFull.current;
     if (!img || !full) return () => {};
     const restore = img.src;
-    img.src = filterToDataUrl(full, grade);
+    img.src = filterToDataUrl(full, grade, 0.97); // Export: höhere Qualität
     await img.decode().catch(() => {});
     return () => {
       img.src = restore;

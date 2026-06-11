@@ -176,12 +176,13 @@ export function filterImageData(src: ImageData, p: Grade): ImageData {
 // rAF-Frame — keine Allokation je Aufruf).
 let scratch: HTMLCanvasElement | null = null;
 
-// Filtert und gibt eine JPEG-Data-URL zurück (für Anzeige/Export).
-export function filterToDataUrl(src: ImageData, p: Grade): string {
+// Filtert und gibt eine JPEG-Data-URL zurück. quality: Vorschau 0.92,
+// Export höher, damit das spätere Re-Encode nicht doppelt verlustbehaftet wird.
+export function filterToDataUrl(src: ImageData, p: Grade, quality = 0.92): string {
   const filtered = filterImageData(src, p);
   if (!scratch) scratch = document.createElement("canvas");
   scratch.width = filtered.width;
   scratch.height = filtered.height;
   scratch.getContext("2d")!.putImageData(filtered, 0, 0);
-  return scratch.toDataURL("image/jpeg", 0.92);
+  return scratch.toDataURL("image/jpeg", quality);
 }

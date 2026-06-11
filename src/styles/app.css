@@ -230,26 +230,17 @@ body {
   background-color: var(--color-bg-page);
 }
 
-/* Illustrations-Mode: dunkle River-Basis + optionales Muster (Papier/Punkte).
-   isolation, damit der Multiply-Blend nur innerhalb wirkt. */
 /* =======================================================================
-   HINTERGRUND-EFFEKTE (Illustrations-Mode) — hier schnell justieren
+   HINTERGRUND-EFFEKTE (Illustrations-/Person-Mode) — hier schnell justieren
+   Rezept wie in den Illustrator-Grafiken: Struktur in Grau, dann ein
+   #0b1316-Layer in multiply 100% darüber. isolation hält den Blend lokal.
    ----------------------------------------------------------------------- */
 :root {
-  /* Basis-Verlauf (dunkler River) */
-  --illu-bg-from: var(--fresh-dark-d);
-  --illu-bg-to: var(--fresh-dark-omega);
-
-  /* Papiertextur: zentrieren (brightness ~0.5 = neutral), Knicke spreizen
-     (contrast), Gesamtstärke (opacity). soft-light hält den Grund dunkel. */
-  --paper-brightness: 0.5;
-  --paper-contrast: 1.9;
-  --paper-opacity: 1;
-
-  /* Punkte-/Linien-Muster: Gesamtstärke (Detail-Werte in lib/*Pattern.ts).
-     Niedriger = dunkler/dezenter, weil die hellen Muster weniger aufhellen. */
-  --dots-opacity: 0.5;
-  --lines-opacity: 0.55;
+  --illu-structure: #ffffff; /* helle Grundfläche, auf der die Graustruktur liegt */
+  --illu-tint: #0b1316; /* Multiply-Layer 100% darüber (dunkler River-Ton) */
+  --paper-contrast: 1.3; /* Knick-Kontrast der Papierstruktur */
+  --dots-opacity: 1; /* Gesamtstärke Punkte (Detailwerte in lib/dotPattern.ts) */
+  --lines-opacity: 1; /* Gesamtstärke Linien (Detailwerte in lib/linePattern.ts) */
 }
 /* ===================================================================== */
 
@@ -257,16 +248,14 @@ body {
   position: absolute;
   inset: 0;
   isolation: isolate;
-  background: radial-gradient(circle at 50% 32%, var(--illu-bg-from), var(--illu-bg-to));
+  background: var(--illu-structure);
 }
 .bg-paper {
   position: absolute;
   inset: 0;
   background-size: cover;
   background-position: center;
-  filter: brightness(var(--paper-brightness)) contrast(var(--paper-contrast));
-  mix-blend-mode: soft-light;
-  opacity: var(--paper-opacity);
+  filter: contrast(var(--paper-contrast));
 }
 .bg-dots {
   position: absolute;
@@ -279,6 +268,13 @@ body {
   inset: 0;
   background-size: cover;
   opacity: var(--lines-opacity);
+}
+/* #0b1316 als Multiply-Layer 100% über der Graustruktur. */
+.bg-tint {
+  position: absolute;
+  inset: 0;
+  background: var(--illu-tint);
+  mix-blend-mode: multiply;
 }
 
 /* Ziehbare Illustration mit Sticker-artigem Schatten. */

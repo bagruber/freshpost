@@ -3,13 +3,14 @@
 // leicht unterschiedlicher Frequenz/Phase ergeben den „gestackten" Look.
 
 // === River-Linien — hier schnell justieren ===
+// Grau gezeichnet (Struktur); der dunkle Ton kommt über den #0b1316-Multiply.
 const LINES = {
   layers: 3, // gestapelte Lagen
   spacing: 0.08, // Zeilenabstand als Bruchteil der Höhe
   amp: 0.5, // Wellenamplitude als Bruchteil des Abstands
-  width: 1.3, // Strichstärke (px)
-  baseAlpha: 0.05, // Grund-Deckkraft (sehr dezent)
-  color: "70, 110, 127", // river-soft
+  width: 1.4, // Strichstärke (px)
+  baseAlpha: 0.16, // Grund-Deckkraft
+  color: "92, 100, 108", // neutrales Grau
 };
 
 export function generateLinePattern(width: number, height: number): string {

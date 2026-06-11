@@ -29,7 +29,7 @@ export async function exportStageToJpg(
     canvas.toBlob(
       (b) => (b ? resolve(b) : reject(new Error("toBlob fehlgeschlagen"))),
       "image/jpeg",
-      0.92,
+      0.95,
     ),
   );
 

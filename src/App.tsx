@@ -279,6 +279,7 @@ export default function App() {
                 {bgPattern === "lines" && patternUrl && (
                   <div className="bg-lines" style={{ backgroundImage: `url(${patternUrl})` }} />
                 )}
+                <div className="bg-tint" />
               </div>
             ) : bgSrc ? (
               <BackgroundLayer

@@ -3,12 +3,13 @@
 // linear größer werdenden Punkte, sondern Inseln dichterer/größerer Punkte.
 
 // === Punkt-Muster — hier schnell justieren ===
+// Grau gezeichnet (Struktur); der dunkle Ton kommt über den #0b1316-Multiply.
 const DOTS = {
   spacing: 20, // Punkte pro Stage-Breite (kleiner = größere Abstände)
   maxRadius: 0.46, // max. Radius relativ zum Rasterabstand
-  baseAlpha: 0.015, // Grund-Deckkraft der Punkte
-  alphaRange: 0.035, // zusätzliche Deckkraft in dichten Feld-Bereichen
-  color: "120, 210, 204", // RGB, wind-ish
+  baseAlpha: 0.06, // Grund-Deckkraft der Punkte
+  alphaRange: 0.16, // zusätzliche Deckkraft in dichten Feld-Bereichen
+  color: "92, 100, 108", // RGB, neutrales Grau
 };
 
 const fract = (v: number) => v - Math.floor(v);
