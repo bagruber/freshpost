@@ -1,6 +1,9 @@
-export type Mode = "photo" | "illustration";
+export type Mode = "photo" | "illustration" | "person";
 
-export type BgPattern = "paper" | "dots" | "none";
+export type BgPattern = "paper" | "dots" | "lines" | "none";
+
+export type PersonLook = "original" | "ci" | "bwriver";
+export type FrameColor = "white" | "river";
 
 export type StickerStyle =
   | "rose"

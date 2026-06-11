@@ -1,10 +1,11 @@
-import type { Claim, StickerStyle, Mode, BgPattern } from "../lib/types";
+import type { Claim, StickerStyle, Mode, BgPattern, PersonLook, FrameColor } from "../lib/types";
 import { STYLES, SEC_MAX, boundaryOk, secondaryStyle } from "../lib/types";
 import type { Grade } from "../lib/ciFilter";
 import { SLIDER } from "../lib/config";
 import { DIMENSIONS, type Dimension } from "../lib/dimensions";
 import { ACCEPTED_TYPES } from "../lib/image";
 import { ILLU_TYPES } from "../lib/illustration";
+import { PERSON_TYPES } from "../lib/personImage";
 import { Slider, Toggle } from "./inputs";
 
 type Props = {
@@ -18,6 +19,12 @@ type Props = {
   illuIsSvg: boolean;
   recolor: boolean;
   bgPattern: BgPattern;
+  hasPerson: boolean;
+  personScale: number | null;
+  personLook: PersonLook;
+  frameColor: FrameColor;
+  frameThickness: number;
+  frameRough: number;
   imgStrength: number; // 0..100 (Standard-Modus)
   grade: Grade; // Advanced-Werte 0..1
   uploadError: string | null;
@@ -28,12 +35,29 @@ type Props = {
   onFile: (file: File | undefined) => void;
   onClearBackground: () => void;
   onClearIllu: () => void;
+  onClearPerson: () => void;
   onIlluScale: (v: number) => void;
+  onPersonScale: (v: number) => void;
+  onPersonLook: (l: PersonLook) => void;
+  onFrameColor: (c: FrameColor) => void;
+  onFrameThickness: (v: number) => void;
+  onFrameRough: (v: number) => void;
   onRecolor: (on: boolean) => void;
   onAdvanced: (on: boolean) => void;
   onReroll: () => void;
   onImgStrength: (v: number) => void;
   onGrade: (key: keyof Grade, v: number) => void;
+};
+
+const ACCEPT: Record<Mode, string> = {
+  photo: ACCEPTED_TYPES.join(","),
+  illustration: ILLU_TYPES.join(","),
+  person: PERSON_TYPES.join(","),
+};
+const UPLOAD_LABEL: Record<Mode, string> = {
+  photo: "Hintergrundbild",
+  illustration: "Illustration (SVG/PNG)",
+  person: "Person (PNG, freigestellt)",
 };
 
 const GRADE_FIELDS: { key: keyof Grade; label: string }[] = [
@@ -70,11 +94,15 @@ function ColorSelect({
 export function Controls(props: Props) {
   const {
     claim, dimension, advanced, mode, hasBackground, hasIllu, illuScale, illuIsSvg, recolor, bgPattern,
+    hasPerson, personScale, personLook, frameColor, frameThickness, frameRough,
     imgStrength, grade, uploadError,
-    onMode, onBgPattern, onClaim, onDimension, onFile, onClearBackground, onClearIllu, onIlluScale, onRecolor,
+    onMode, onBgPattern, onClaim, onDimension, onFile, onClearBackground, onClearIllu, onClearPerson,
+    onIlluScale, onPersonScale, onPersonLook, onFrameColor, onFrameThickness, onFrameRough, onRecolor,
     onAdvanced, onReroll, onImgStrength, onGrade,
   } = props;
   const isPhoto = mode === "photo";
+  const isIllu = mode === "illustration";
+  const isPerson = mode === "person";
 
   const noMain = claim.main.trim().length === 0;
   const hasUpper = claim.upper.trim().length > 0;
@@ -91,10 +119,14 @@ export function Controls(props: Props) {
     <aside className="controls">
       <h1 className="controls-title">freshpost</h1>
 
-      <div className="mode-toggle">
-        <button className={isPhoto ? "active" : ""} onClick={() => onMode("photo")}>Foto</button>
-        <button className={!isPhoto ? "active" : ""} onClick={() => onMode("illustration")}>Illustration</button>
-      </div>
+      <label className="field">
+        <span>Modus</span>
+        <select value={mode} onChange={(e) => onMode(e.target.value as Mode)}>
+          <option value="photo">Foto</option>
+          <option value="illustration">Illustration</option>
+          <option value="person">Person</option>
+        </select>
+      </label>
 
       {!isPhoto && (
         <label className="field">
@@ -102,6 +134,7 @@ export function Controls(props: Props) {
           <select value={bgPattern} onChange={(e) => onBgPattern(e.target.value as BgPattern)}>
             <option value="paper">Papier</option>
             <option value="dots">Punkte</option>
+            <option value="lines">Linien</option>
             <option value="none">Keins</option>
           </select>
         </label>
@@ -152,15 +185,17 @@ export function Controls(props: Props) {
       )}
 
       <label className="field">
-        <span>{isPhoto ? "Hintergrundbild" : "Illustration (SVG/PNG)"}</span>
-        <input type="file" accept={(isPhoto ? ACCEPTED_TYPES : ILLU_TYPES).join(",")}
-          onChange={(e) => onFile(e.target.files?.[0])} />
+        <span>{UPLOAD_LABEL[mode]}</span>
+        <input type="file" accept={ACCEPT[mode]} onChange={(e) => onFile(e.target.files?.[0])} />
       </label>
       {isPhoto && hasBackground && (
         <button className="btn-secondary" onClick={onClearBackground}>Bild entfernen</button>
       )}
-      {!isPhoto && hasIllu && (
+      {isIllu && hasIllu && (
         <button className="btn-secondary" onClick={onClearIllu}>Illustration entfernen</button>
+      )}
+      {isPerson && hasPerson && (
+        <button className="btn-secondary" onClick={onClearPerson}>Person entfernen</button>
       )}
       {uploadError && <p className="error" role="alert">{uploadError}</p>}
 
@@ -169,10 +204,35 @@ export function Controls(props: Props) {
           onChange={onImgStrength} />
       )}
 
-      {!isPhoto && hasIllu && illuScale != null && (
+      {isIllu && hasIllu && illuScale != null && (
         <Slider label={`Illustrationsgröße ${Math.round(illuScale * 100)}`}
           value={Math.round(illuScale * 100)} {...SLIDER.illuSize}
           onChange={(v) => onIlluScale(v / 100)} />
+      )}
+
+      {isPerson && hasPerson && (
+        <>
+          <label className="field">
+            <span>Person-Look</span>
+            <select value={personLook} onChange={(e) => onPersonLook(e.target.value as PersonLook)}>
+              <option value="original">Original</option>
+              <option value="ci">CI-Recolor</option>
+              <option value="bwriver">S/W + River</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>Rahmenfarbe</span>
+            <select value={frameColor} onChange={(e) => onFrameColor(e.target.value as FrameColor)}>
+              <option value="white">Weiß</option>
+              <option value="river">River hell</option>
+            </select>
+          </label>
+          {personScale != null && (
+            <Slider label={`Größe ${Math.round(personScale * 100)}`}
+              value={Math.round(personScale * 100)} {...SLIDER.illuSize}
+              onChange={(v) => onPersonScale(v / 100)} />
+          )}
+        </>
       )}
 
       <button className="btn-secondary" onClick={onReroll}>Look würfeln</button>
@@ -218,8 +278,18 @@ export function Controls(props: Props) {
             <Toggle label="Unten GROSS" checked={claim.capLower} onChange={(v) => onClaim({ capLower: v })} />
           </div>
 
-          {!isPhoto && hasIllu && illuIsSvg && (
+          {isIllu && hasIllu && illuIsSvg && (
             <Toggle label="CI-Recolor (SVG)" checked={recolor} onChange={onRecolor} />
+          )}
+
+          {isPerson && hasPerson && (
+            <div className="grade-block">
+              <p className="grade-title">Rahmen</p>
+              <Slider label={`Dicke ${frameThickness}`} value={frameThickness} {...SLIDER.frameThickness}
+                onChange={onFrameThickness} />
+              <Slider label={`Rauheit ${frameRough}`} value={frameRough} {...SLIDER.frameRough}
+                onChange={onFrameRough} />
+            </div>
           )}
 
           {isPhoto && hasBackground && (

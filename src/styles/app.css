@@ -246,8 +246,9 @@ body {
   --paper-contrast: 1.9;
   --paper-opacity: 1;
 
-  /* Punkte-Muster: Gesamtstärke (Detail-Werte in lib/dotPattern.ts). */
+  /* Punkte-/Linien-Muster: Gesamtstärke (Detail-Werte in lib/*Pattern.ts). */
   --dots-opacity: 1;
+  --lines-opacity: 1;
 }
 /* ===================================================================== */
 
@@ -272,6 +273,12 @@ body {
   background-size: cover;
   opacity: var(--dots-opacity);
 }
+.bg-lines {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  opacity: var(--lines-opacity);
+}
 
 /* Ziehbare Illustration mit Sticker-artigem Schatten. */
 .illu {
@@ -283,6 +290,17 @@ body {
 }
 .illu:active { cursor: grabbing; }
 .illu img { width: 100%; height: auto; display: block; pointer-events: none; }
+
+/* Freigestellte Person mit rauer Sticker-Umrandung + Dropshadow. */
+.person {
+  position: absolute;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  filter: drop-shadow(0 9px 22px rgba(0, 0, 0, 0.5));
+}
+.person:active { cursor: grabbing; }
+.person img { width: 100%; height: auto; display: block; pointer-events: none; }
 
 .bg-image {
   position: absolute;
