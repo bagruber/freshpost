@@ -153,40 +153,18 @@ export default function App() {
           dimension={dimension}
           advanced={advanced}
           mode={mode}
-          hasBackground={photo.hasBackground}
-          hasIllu={illu.item != null}
-          illuScale={illu.item?.scale ?? null}
-          illuIsSvg={illu.item?.isSvg ?? false}
-          recolor={illu.recolor}
           bgPattern={bgPattern}
-          hasPerson={person.item != null}
-          personScale={person.item?.scale ?? null}
-          personLook={person.look}
-          frameColor={person.frameColor}
-          frameThickness={person.frameThickness}
-          frameRough={person.frameRough}
-          imgStrength={photo.imgStrength}
-          grade={photo.grade}
           uploadError={uploadError}
+          photo={photo}
+          illu={illu}
+          person={person}
           onMode={setMode}
           onBgPattern={setBgPattern}
           onClaim={patchClaim}
           onDimension={setDimensionKey}
           onFile={handleFile}
-          onClearBackground={photo.clear}
-          onClearIllu={illu.clear}
-          onClearPerson={person.clear}
-          onIlluScale={illu.setScale}
-          onPersonScale={person.setScale}
-          onPersonLook={person.setLook}
-          onFrameColor={person.setFrameColor}
-          onFrameThickness={person.setFrameThickness}
-          onFrameRough={person.setFrameRough}
-          onRecolor={illu.setRecolor}
           onAdvanced={onAdvanced}
           onReroll={onReroll}
-          onImgStrength={photo.setImgStrength}
-          onGrade={photo.setGrade}
         />
       </BottomSheet>
       <main
