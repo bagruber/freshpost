@@ -180,6 +180,52 @@ body {
   display: block;
 }
 .tile-label { text-align: center; }
+/* „Keins"-Kachel: leere Fläche mit diagonalem Strich. */
+.tile-none {
+  background:
+    linear-gradient(45deg, transparent 46%, var(--color-border-glass) 46% 54%, transparent 54%),
+    var(--color-bg-elevated);
+}
+.tile-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  background: var(--fresh-dark-b);
+}
+.tile-logo img { max-width: 100%; max-height: 100%; display: block; }
+
+/* Logo-Optionen: Ecken-Picker (2×2) + Größen-Umschalter. */
+.logo-opts {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  margin-top: var(--space-2);
+}
+.logo-opts .mode-toggle { flex: 1; }
+.corner-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 34px);
+  grid-auto-rows: 34px;
+  gap: 4px;
+}
+.corner-grid button {
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-bg-elevated);
+  color: var(--color-text-secondary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 0;
+}
+.corner-grid button.active { background: var(--fresh-rose); color: var(--color-text-on-rose); }
+
+/* Logo-Sticker auf der Stage: Ecke der Safety-Zone, nicht interaktiv. */
+.logo-layer {
+  position: absolute;
+  height: auto;
+  pointer-events: none;
+}
 
 .btn-upload { text-align: left; }
 

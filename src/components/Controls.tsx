@@ -5,6 +5,7 @@ import { DIMENSIONS, type Dimension } from "../lib/dimensions";
 import { ACCEPTED_TYPES } from "../lib/image";
 import { ILLU_TYPES } from "../lib/illustration";
 import { PERSON_TYPES } from "../lib/personImage";
+import { LOGOS, LOGO_SIZES, type LogoState, type LogoCorner, type LogoSize } from "../lib/logos";
 import type { PhotoState } from "../hooks/usePhoto";
 import type { IllustrationState } from "../hooks/useIllustration";
 import type { PersonState } from "../hooks/usePerson";
@@ -34,6 +35,8 @@ type Props = {
   onFile: (file: File | undefined) => void;
   onAdvanced: (on: boolean) => void;
   onReroll: () => void;
+  logo: LogoState;
+  onLogo: (patch: Partial<LogoState>) => void;
 };
 
 const ACCEPT: Record<Mode, string> = {
@@ -65,6 +68,14 @@ const PATTERN_OPTIONS: { value: BgPattern; label: string }[] = [
   { value: "none", label: "Keins" },
 ];
 
+const CORNER_OPTIONS: { value: LogoCorner; label: string }[] = [
+  { value: "tl", label: "↖" },
+  { value: "tr", label: "↗" },
+  { value: "bl", label: "↙" },
+  { value: "br", label: "↘" },
+];
+const LOGO_SIZE_LABEL: Record<LogoSize, string> = { s: "Klein", m: "Mittel" };
+
 // Sticker-Farben als Chip-Reihe; verbotene Kombinationen ausgegraut.
 function styleItems(isAllowed: (s: StickerStyle) => boolean): SwatchItem<StickerStyle>[] {
   return STYLES.map((s) => ({
@@ -79,6 +90,7 @@ export function Controls(props: Props) {
   const {
     claim, dimension, advanced, mode, bgPattern, uploadError, photo, illu, person,
     onMode, onBgPattern, onClaim, onDimension, onFile, onAdvanced, onReroll,
+    logo, onLogo,
   } = props;
   const isPhoto = mode === "photo";
   const isIllu = mode === "illustration";
@@ -170,6 +182,71 @@ export function Controls(props: Props) {
           ))}
         </select>
       </label>
+
+      {LOGOS.length > 0 && (
+        <div className="field" role="radiogroup" aria-label="Logo">
+          <span>Logo</span>
+          <div className="tile-row">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={logo.key == null}
+              className={`tile${logo.key == null ? " active" : ""}`}
+              onClick={() => onLogo({ key: null })}
+            >
+              <span className="tile-preview tile-none" />
+              <span className="tile-label">Keins</span>
+            </button>
+            {LOGOS.map((l) => (
+              <button
+                key={l.key}
+                type="button"
+                role="radio"
+                aria-checked={logo.key === l.key}
+                className={`tile${logo.key === l.key ? " active" : ""}`}
+                onClick={() => onLogo({ key: l.key })}
+              >
+                <span className="tile-preview tile-logo">
+                  <img src={l.url} alt="" />
+                </span>
+                <span className="tile-label">{l.label}</span>
+              </button>
+            ))}
+          </div>
+          {logo.key != null && (
+            <div className="logo-opts">
+              <div className="corner-grid" role="radiogroup" aria-label="Logo-Ecke">
+                {CORNER_OPTIONS.map((c) => (
+                  <button
+                    key={c.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={logo.corner === c.value}
+                    className={logo.corner === c.value ? "active" : ""}
+                    onClick={() => onLogo({ corner: c.value })}
+                  >
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+              <div className="mode-toggle logo-size" role="radiogroup" aria-label="Logo-Größe">
+                {LOGO_SIZES.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    role="radio"
+                    aria-checked={logo.size === s}
+                    className={logo.size === s ? "active" : ""}
+                    onClick={() => onLogo({ size: s })}
+                  >
+                    {LOGO_SIZE_LABEL[s]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {!advanced && (
         <Slider label={`Textgröße ${Math.round(claim.stdScale * 100)}`}

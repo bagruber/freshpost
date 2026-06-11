@@ -14,6 +14,8 @@ import { autoMainSize } from "./lib/layout";
 import { extents, clampToCanvas, violatesSafe, type Size, type Pos } from "./lib/geometry";
 import { renderStageToJpg, downloadBlob, shareBlob, canShareJpg } from "./lib/exportImage";
 import { loadDraft, saveDraft } from "./lib/draft";
+import { getLogo, DEFAULT_LOGO, type LogoState } from "./lib/logos";
+import { LogoLayer } from "./components/LogoLayer";
 import { IMAGE_ERROR_TEXT, ACCEPTED_TYPES } from "./lib/image";
 import { ILLU_ERROR_TEXT, ILLU_TYPES } from "./lib/illustration";
 import { PERSON_TYPES, PERSON_ERROR_TEXT } from "./lib/personImage";
@@ -52,6 +54,11 @@ export default function App() {
   const [mode, setMode] = useState<Mode>(draft?.mode ?? "photo");
   const [bgPattern, setBgPattern] = useState<BgPattern>(draft?.bgPattern ?? "paper");
   const [claim, setClaim] = useState<Claim>(() => ({ ...defaultClaim(), ...draft?.claim }));
+  // Logo aus dem Entwurf nur übernehmen, wenn die Datei noch existiert.
+  const [logo, setLogo] = useState<LogoState>(() => {
+    const l = { ...DEFAULT_LOGO, ...draft?.logo };
+    return getLogo(l.key) ? l : { ...l, key: null };
+  });
 
   const stageRef = useRef<HTMLDivElement>(null);
   const dimension = getDimension(dimensionKey);
@@ -67,11 +74,14 @@ export default function App() {
   // Entwurf debounced sichern (ohne Bilddaten).
   useEffect(() => {
     const t = setTimeout(
-      () => saveDraft({ claim, mode, bgPattern, dimensionKey, advanced }),
+      () => saveDraft({ claim, mode, bgPattern, dimensionKey, advanced, logo }),
       400,
     );
     return () => clearTimeout(t);
-  }, [claim, mode, bgPattern, dimensionKey, advanced]);
+  }, [claim, mode, bgPattern, dimensionKey, advanced, logo]);
+
+  const logoOption = getLogo(logo.key);
+  const patchLogo = (patch: Partial<LogoState>) => setLogo((l) => ({ ...l, ...patch }));
 
   // Effektive Main-Größe wird abgeleitet (nicht gespeichert): Standard = auto
   // an die Safety-Zone, Advanced = manueller Wert.
@@ -208,6 +218,8 @@ export default function App() {
           onFile={handleFile}
           onAdvanced={onAdvanced}
           onReroll={onReroll}
+          logo={logo}
+          onLogo={patchLogo}
         />
       </BottomSheet>
       <main
@@ -290,6 +302,9 @@ export default function App() {
             onDrag={onDrag}
             onMeasure={handleMeasure}
           />
+          {logoOption && (
+            <LogoLayer url={logoOption.url} corner={logo.corner} size={logo.size} dimension={dimension} />
+          )}
         </Stage>
         {showPanHint && mode === "photo" && photo.hasBackground && (
           <div className="pan-hint" aria-hidden>

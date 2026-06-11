@@ -1,4 +1,5 @@
 import type { Claim, Mode, BgPattern } from "./types";
+import { LOGO_CORNERS, LOGO_SIZES, type LogoState } from "./logos";
 
 // Entwurf-Persistenz: Claim/Mode/Format überleben Reload & Tab-Tod (mobil
 // häufig). Bewusst ohne Bilddaten — nur der leichte Text-/Einstellungs-State.
@@ -11,10 +12,21 @@ export type Draft = {
   bgPattern: BgPattern;
   dimensionKey: string;
   advanced: boolean;
+  logo: LogoState;
 };
 
 const MODES: Mode[] = ["photo", "illustration", "person"];
 const PATTERNS: BgPattern[] = ["paper", "dots", "lines", "none"];
+
+function isLogoState(v: unknown): v is LogoState {
+  if (typeof v !== "object" || v == null) return false;
+  const l = v as LogoState;
+  return (
+    (l.key === null || typeof l.key === "string") &&
+    LOGO_CORNERS.includes(l.corner) &&
+    LOGO_SIZES.includes(l.size)
+  );
+}
 
 export function loadDraft(): Partial<Draft> | null {
   try {
@@ -28,6 +40,7 @@ export function loadDraft(): Partial<Draft> | null {
       bgPattern: PATTERNS.includes(d.bgPattern as BgPattern) ? d.bgPattern : undefined,
       dimensionKey: typeof d.dimensionKey === "string" ? d.dimensionKey : undefined,
       advanced: typeof d.advanced === "boolean" ? d.advanced : undefined,
+      logo: isLogoState(d.logo) ? d.logo : undefined,
     };
   } catch {
     return null;
