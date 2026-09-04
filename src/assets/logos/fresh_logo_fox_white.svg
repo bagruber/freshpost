@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- fresh-Fuchs (Bildmarke) in Weiß, ohne Wortmarke "fresh." — abgeleitet aus
+     fresh_logo_name_white.svg (dieselben Pfade der Marke: zwei Flügel + Raute). -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="28 -3 43 63">
+  <g fill="#fff">
+    <polygon points="69.39 0 50.12 19.28 69.39 38.55"/>
+    <polygon points="30.84 38.55 50.12 19.28 30.84 0"/>
+    <rect x="46.94" y="50.15" width="6.36" height="6.36" transform="translate(-23.03 51.06) rotate(-45)"/>
+  </g>
+</svg>
