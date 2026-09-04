@@ -2,20 +2,45 @@
  * Der markengetriebene Frame-Renderer (core/render/FrameView).
  * Nur Struktur und Stapelung — jede Farbe, jede Groesse kommt aus dem
  * Marken-Paket und steht inline am Element.
+ *
+ * Stapelung von unten nach oben:
+ *   0  Bild in der Restflaeche / randabfallend
+ *   1  Farbflaeche
+ *   2  frei gesetztes Bild (darf die Flaeche ueberlappen)
+ *   3  Satz
+ *   4  Bildnachweis
+ *  20  Textur VOR dem Inhalt
+ *  25  Logo
+ *  30  Fortschrittsanzeige
  */
 
 .fp-frame {
   position: relative;
   overflow: hidden;
+  isolation: isolate; /* blend-modes der Textur bleiben im Frame */
 }
 
 /* Bildzone: auf das beschnitten, was die Farbflaeche uebrig laesst. */
 .fp-media {
   position: absolute;
-  left: 0;
-  right: 0;
   overflow: hidden;
   z-index: 0;
+}
+.fp-media-float {
+  overflow: visible; /* die raue Kante darf ueber den Kasten hinausragen */
+  z-index: 2;
+}
+/* Randabfallend: KEIN z-index. Ein positioniertes Element mit z-index bildet
+   einen eigenen Stapelkontext — die tonale Einfaerbung (mix-blend-mode) wuerde
+   dann nur mit dem leeren Kasten mischen statt mit dem Grund darunter. */
+.fp-media-fill { z-index: auto; }
+/* Gruppen-Versatz (Drag). Skaliert von unten-mittig, damit bodenstaendige
+   Cutouts beim Groesser/Kleiner auf dem Boden bleiben. */
+.fp-media-group {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+  transform-origin: 50% 100%;
 }
 .fp-media-img {
   width: 100%;
@@ -35,12 +60,69 @@
   pointer-events: none;
 }
 
-.fp-band { position: absolute; left: 0; right: 0; z-index: 1; }
+.fp-band { position: absolute; z-index: 1; }
 
-.fp-text { position: absolute; z-index: 2; }
+/* Textur-Ebene (Struktur, Papier, Halbton, Koernung). */
+.fp-layer { position: absolute; inset: 0; pointer-events: none; }
+.fp-layer-front { z-index: 20; }
+
+/* === Satz === */
+.fp-text { position: absolute; z-index: 3; }
 .fp-role > p { margin: 0; }
 .fp-role > p + p { margin-top: 0.55em; }
+.fp-role-rule { display: block; }
+/* Kopf mit gemessener Mindesthoehe: Absaetze beginnen ueber alle Frames
+   desselben Layouts gleich hoch. */
+.fp-head { display: flex; flex-direction: column; }
 
-.fp-credit { position: absolute; z-index: 3; letter-spacing: 0.01em; }
+/* Sticker: eine Rolle als Farbbox. Aufeinanderfolgende werden als EINE Gruppe
+   gekippt, damit ihr Abstand nicht an der Neigung haengt. */
+.fp-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  transform-origin: center;
+  position: relative;
+  z-index: 1;
+}
+.fp-sticker {
+  display: inline-block;
+  position: relative;
+  transform-origin: center;
+}
 
-.fp-logo { position: absolute; z-index: 3; height: auto; display: block; }
+.fp-credit { position: absolute; z-index: 4; letter-spacing: 0.01em; }
+
+.fp-logo { position: absolute; z-index: 25; height: auto; display: block; pointer-events: none; }
+
+/* === Fortschrittsanzeige (nach rechts zeigende Dreiecke) === */
+.fp-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 30;
+}
+.fp-progress-top { top: 3.4%; }
+.fp-progress-bottom { bottom: 3.4%; }
+.fp-tri {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+  border-right-width: 0;
+}
+
+/* === Raue Sticker-Kante um eine Bildgruppe === */
+.fp-rough { width: 100%; height: 100%; display: block; filter: drop-shadow(0 9px 22px rgba(0, 0, 0, 0.5)); }
+.fp-rough-grp { position: relative; width: 100%; height: 100%; }
+/* width:auto + height:100% → Seitenverhaeltnis bleibt erhalten. KEIN
+   max-width, sonst wuerde die Breite geklemmt und das Bild gestreckt. */
+.fp-rough-grp img { position: absolute; bottom: 0; height: 100%; width: auto; transform-origin: 50% 100%; display: block; }
+
+/* Offscreen-Vermessung der Kopfhoehen. */
+.fp-measurer { position: fixed; left: -99999px; top: 0; visibility: hidden; pointer-events: none; }

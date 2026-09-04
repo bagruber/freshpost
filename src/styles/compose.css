@@ -1,0 +1,278 @@
+/* =======================================================================
+   Die Huelle des Beitrag-Werkzeugs: Umschalter, Raster, Bedienfeld,
+   Filmstreifen. Baut auf core/styles/base.css + app.css auf (Form-Controls,
+   Buttons, Kacheln werden wiederverwendet).
+
+   Was IM Bild liegt, steht nicht hier, sondern in core/styles/frame.css —
+   dort rendert FrameView, und dort gilt allein, was das Marken-Paket sagt.
+   ----------------------------------------------------------------------- */
+
+/* === Werkzeug-Umschalter === */
+.root { display: flex; flex-direction: column; height: 100%; }
+.tool-switch {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px var(--space-4);
+  background: var(--fresh-dark-omega);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+.tool-brand {
+  font-family: var(--font-display);
+  font-weight: 800;
+  text-transform: lowercase;
+  color: var(--fresh-rose);
+  font-size: 1.1rem;
+  margin-right: var(--space-3);
+}
+.tool-switch button {
+  font: inherit;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 5px 14px;
+  cursor: pointer;
+}
+.tool-switch button.active { background: var(--fresh-rose); color: #fff; }
+.root-body { flex: 1; min-height: 0; position: relative; }
+
+/* === App-Raster (Desktop-first) === */
+.cx-app {
+  display: grid;
+  grid-template-columns: minmax(320px, 360px) 1fr;
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: 100%;
+  background: var(--color-bg-page);
+}
+.cx-controls {
+  grid-column: 1;
+  grid-row: 1;
+  overflow-y: auto;
+  height: 100%;
+  border-right: 1px solid var(--color-border-subtle);
+  background: var(--color-bg-surface);
+  scrollbar-width: thin;
+  scrollbar-color: var(--fresh-river-mid) transparent;
+}
+.cx-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+.cx-panel-title {
+  margin: 0;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+}
+
+.cx-stage-area {
+  grid-column: 2;
+  grid-row: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+  padding: var(--space-5);
+  background: radial-gradient(circle at 50% 30%, var(--fresh-dark-c), var(--color-bg-page));
+}
+.cx-upload-error {
+  position: absolute;
+  top: var(--space-3);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  margin: 0;
+  background: color-mix(in srgb, var(--fresh-dark-omega) 82%, transparent);
+  padding: 6px 12px;
+  border-radius: 6px;
+}
+
+/* === Skalierung (core/canvas/Scaled) ===
+   Basis fuer beide Werkzeuge: wrap fuellt den Platz, box hat die Groesse NACH
+   der Skalierung, inner traegt die Export-Pixel. */
+.fp-scaled {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+}
+.fp-scaled-box { position: relative; overflow: hidden; }
+.fp-scaled-inner { position: absolute; top: 0; left: 0; transform-origin: top left; overflow: hidden; }
+
+.cx-preview .fp-scaled-box {
+  border-radius: 10px;
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.18), 0 18px 50px rgba(0, 0, 0, 0.55);
+}
+/* === Filmstreifen === */
+.cx-strip {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--color-border-subtle);
+  background: var(--color-bg-surface);
+}
+.cx-palette { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.cx-strip-title {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.78rem;
+  color: var(--color-text-tertiary);
+  margin-right: var(--space-2);
+}
+.cx-pal-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 999px;
+  padding: 6px 12px;
+  cursor: grab;
+}
+.cx-pal-chip:hover { color: var(--color-text-primary); border-color: var(--fresh-rose); }
+.cx-pal-chip:active { cursor: grabbing; }
+.cx-pal-plus { color: var(--fresh-rose); font-size: 1.05em; }
+
+.cx-slots { display: flex; gap: var(--space-3); align-items: flex-start; overflow-x: auto; padding-bottom: var(--space-2); }
+.cx-slot {
+  position: relative;
+  flex: 0 0 auto;
+  width: 100px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-text-tertiary);
+  font: inherit;
+}
+.cx-slot:active { cursor: grabbing; }
+.cx-slot-no {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  z-index: 2;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.72rem;
+  background: color-mix(in srgb, var(--fresh-dark-omega) 72%, transparent);
+  color: #fff;
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+.cx-slot-thumb {
+  width: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  background: var(--fresh-dark-omega);
+}
+.cx-slot.active { color: var(--color-text-primary); }
+.cx-slot.active .cx-slot-thumb { border-color: var(--fresh-rose); }
+.cx-slot.drop .cx-slot-thumb { border-color: var(--fresh-wind); }
+.cx-slot-layout {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: 0.68rem;
+  text-align: center;
+}
+.cx-slot-del {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  z-index: 3;
+  width: 19px;
+  height: 19px;
+  border-radius: 999px;
+  border: none;
+  background: color-mix(in srgb, var(--fresh-dark-omega) 72%, transparent);
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cx-slot-del:hover { background: var(--fresh-rose); }
+
+.cx-slot-add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 2px dashed var(--color-border-glass);
+  border-radius: 6px;
+  background: var(--color-bg-elevated);
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  font: inherit;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.cx-slot-add:hover { color: var(--color-text-primary); border-color: var(--fresh-rose); }
+.cx-slot-add.drop { border-color: var(--fresh-wind); color: var(--color-text-primary); }
+.cx-add-plus { font-size: 1.5rem; color: var(--fresh-rose); }
+
+/* Fokus sichtbar (Tastatur). */
+.cx-slot:focus-visible,
+.cx-pal-chip:focus-visible,
+.tool-switch button:focus-visible { outline: 3px solid var(--fresh-rose); outline-offset: 2px; }
+
+/* Textur-Regler: Label + zwei kompakte Slider (hinten/vorne) je Art. */
+.cx-tex-row { display: grid; grid-template-columns: 64px 1fr 1fr; align-items: center; gap: var(--space-2); }
+.cx-tex-label { font-size: 0.78rem; color: var(--color-text-secondary); }
+.cx-tex-row .field { font-size: 0.72rem; }
+.cx-tex-row .field > span { color: var(--color-text-tertiary); }
+
+/* Bild-Liste (Freistellen / Entfernen je Bild). */
+.cx-img-row { display: flex; align-items: center; gap: var(--space-2); }
+.cx-img-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.78rem; color: var(--color-text-secondary); }
+.cx-img-btn { padding: var(--space-1) var(--space-2); font-size: 0.75rem; margin: 0; }
+
+/* Schmalere Fenster: Controls dürfen etwas schrumpfen; darunter Hinweis. */
+@media (max-width: 720px) {
+  .cx-app { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr) auto; }
+  .cx-controls { grid-column: 1; grid-row: 1; height: auto; max-height: 42vh; border-right: none; border-bottom: 1px solid var(--color-border-subtle); }
+  .cx-stage-area { grid-column: 1; grid-row: 2; }
+  .cx-strip { grid-row: 3; }
+}
+
+/* Eine Rolle im Bedienfeld: Textfeld plus ihre Varianten. */
+.cx-role { display: flex; flex-direction: column; gap: var(--space-2); }

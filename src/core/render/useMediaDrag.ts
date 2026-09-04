@@ -1,14 +1,14 @@
 import { useRef } from "react";
-import { usePointerDrag } from "../core/input/usePointerDrag";
+import { usePointerDrag } from "../input/usePointerDrag";
 
-// Drag zum Verschieben eines Bildes/einer Cutout-Gruppe innerhalb eines Slides.
-// Rechnet Pointer-Bewegung über das umschließende .cx-slide (echte Bildschirm-
-// pixel) in Slide-Bruchteile um — funktioniert also trotz Vorschau-Skalierung.
+// Drag zum Verschieben der Bildgruppe innerhalb eines Frames. Rechnet die
+// Pointer-Bewegung ueber den umschliessenden .fp-frame (echte Bildschirmpixel)
+// in Bruchteile des Formats um — funktioniert also trotz Vorschau-Skalierung.
 // Meldet den neuen Versatz (x, y), auf ±0.5 begrenzt.
 
 const clamp = (v: number) => Math.min(0.5, Math.max(-0.5, v));
 
-export function useSlideDrag(onSet: (x: number, y: number) => void) {
+export function useMediaDrag(onSet: (x: number, y: number) => void) {
   const ref = useRef<{ bx: number; by: number; cx: number; cy: number; w: number; h: number } | null>(null);
 
   const startDrag = usePointerDrag({
@@ -20,9 +20,9 @@ export function useSlideDrag(onSet: (x: number, y: number) => void) {
   });
 
   return (e: React.PointerEvent, baseX: number, baseY: number) => {
-    const slide = (e.currentTarget as HTMLElement).closest(".cx-slide") as HTMLElement | null;
-    if (!slide) return;
-    const rect = slide.getBoundingClientRect();
+    const frame = (e.currentTarget as HTMLElement).closest(".fp-frame") as HTMLElement | null;
+    if (!frame) return;
+    const rect = frame.getBoundingClientRect();
     ref.current = { bx: baseX, by: baseY, cx: e.clientX, cy: e.clientY, w: rect.width, h: rect.height };
     startDrag(e);
   };

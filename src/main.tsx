@@ -11,7 +11,7 @@ import "@fontsource/raleway/600.css";
 import "@fontsource/raleway/700.css";
 import "./core/styles/base.css";
 import "./styles/app.css";
-import "./styles/carousel.css";
+import "./styles/compose.css";
 import "./core/styles/frame.css";
 import { Root } from "./Root";
 import { BrandProvider, applyBrandTokens } from "./brand/context";

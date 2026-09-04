@@ -28,6 +28,10 @@ const roles: Record<string, TextRole> = {
   headline: {
     key: "headline", label: "Titel", font: "display", weight: 400,
     size: 0.05, lineHeight: 1.4, gapAfter: 0.04, multiline: true,
+    // Absichtlich andere Sticker-Masse als fresh: der Renderer darf keine
+    // davon fest verdrahten.
+    tint: true,
+    sticker: { padX: 0.2, padY: 0.3, overlap: 0.05 },
   },
   body: {
     key: "body", label: "Text", font: "body", weight: 400,
@@ -40,13 +44,24 @@ const layouts: Layout[] = [
   {
     key: "plain", label: "Schlicht",
     band: "full", bandSize: "auto", align: "top", textWidth: 0.8,
-    slots: ["headline", "body"], media: 0,
+    slots: ["headline", "body"], media: { count: 0, place: "zone" },
   },
   {
     key: "halfTop", label: "Halb oben",
     // Feste Bandgroesse statt "auto" — der Renderer muss beides koennen.
     band: "top", bandSize: 0.45, align: "top", textWidth: 0.8,
-    slots: ["headline"], media: 1,
+    slots: ["headline"], media: { count: 1, place: "zone" },
+  },
+  {
+    key: "sideRight", label: "Spalte rechts",
+    // Stehende Flaeche auf der ANDEREN Seite als bei fresh, dazu eine
+    // schraege Kante und ein frei gesetztes Bild — das gesamte neue
+    // Vokabular einmal in ungewohnter Kombination.
+    band: "side", bandSize: 0.55, sideAt: "right",
+    edge: "diagonal", edgeCut: 0.08,
+    align: "top", textWidth: 0.42, padTop: 0.1, padBottom: 0.1, headSlots: 1,
+    slots: ["headline", "body"],
+    media: { count: 2, place: "float", box: { width: 0.5, height: 0.7, right: 0.5, bottom: 0.1 }, frame: true },
   },
 ];
 
@@ -83,6 +98,7 @@ export const probe: Brand = {
   bandPadding: 0.09,
   creditLabel: { photo: "Bild:", illustration: "Zeichnung:" },
   exportBackground: "#14120e",
+  progress: { past: "#e8b400", now: "#f3efe4", future: "rgba(243,239,228,0.2)" },
 
   // === Faehigkeiten ===
   colors: {
@@ -132,5 +148,6 @@ export const probe: Brand = {
     tint: "var(--illu-tint)",
     paperUrl: "",
     sheetUrl: "",
+    halftoneInk: "#808080",
   },
 };

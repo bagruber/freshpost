@@ -1,19 +1,24 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { useBrand } from "../brand/context";
 import { getLayout, getSurface } from "../brand/contract";
 import { getDimension } from "../core/canvas/dimension";
 import { Scaled } from "../core/canvas/Scaled";
 import { renderStageToJpg, downloadBlob, shareBlob, canShareJpg } from "../core/canvas/exportImage";
-import { FrameView } from "../core/render/FrameView";
+import { FrameView, type FrameTheme } from "../core/render/FrameView";
+import { HeadMeasurer } from "../core/render/HeadMeasurer";
+import { useGroundLayers } from "../core/render/useGroundLayers";
+import { BusyOverlay, CUTOUT_BUSY } from "../core/ui/BusyOverlay";
+import { removePersonBackground } from "../core/media/removeBg";
 import { ACCEPTED_TYPES } from "../core/media/image";
 import { MAX_FILE_BYTES, readDataUrl } from "../core/media/readFile";
-import { Segmented, Tiles, Slider, FileButton, type TileItem } from "../core/input/controls";
 import {
-  MAX_FRAMES, emptyMedia, frameId, patchFrame, pruneText, setText,
+  MAX_FRAMES, emptyMedia, patchFrame, pruneText,
   type Composition, type Frame,
 } from "../core/doc/composition";
-import { loadComposition, saveComposition } from "./composeDraft";
+import { ComposeControls } from "./ComposeControls";
+import { Filmstrip } from "./Filmstrip";
+import { defaultRough, emptyFrame, loadComposition, saveComposition } from "./composeDraft";
 
 // Das gemeinsame Werkzeug: eine Composition aus 1..n Frames, gerendert vom
 // markengetriebenen FrameView. Welche Layouts, Flaechen und Textrollen es
@@ -28,7 +33,10 @@ export function ComposeApp() {
   const [doc, setDoc] = useState<Composition>(() => loadComposition(brand));
   const [selectedId, setSelectedId] = useState(() => doc.frames[0].id);
   const [exporting, setExporting] = useState(false);
+  const [busy, setBusy] = useState(false); // Freistellen laeuft
   const [error, setError] = useState<string | null>(null);
+  const [fontsReady, setFontsReady] = useState(false);
+  const [headMins, setHeadMins] = useState<Record<string, number>>({});
   const [logoSvg, setLogoSvg] = useState<string>();
 
   const dimension = getDimension(brand.formats, doc.formatKey);
@@ -36,10 +44,15 @@ export function ComposeApp() {
   const frame = doc.frames[index];
   const layout = getLayout(brand, frame.layoutId);
 
-  // Das Logo wird als Rohtext gebraucht, um es in die Farbe der Flaeche zu
-  // faerben (siehe core/render/tintSvg).
+  // Eine Marke ohne waehlbare Logo-Positionen setzt ihr Logo fest und faerbt
+  // es in die Schriftfarbe der Flaeche — dafuer braucht es den Rohtext.
+  const tintLogo = brand.logo.placements.length === 0;
+  const logoUrl = tintLogo
+    ? null
+    : brand.logo.options.find((o) => o.key === doc.logoKey)?.url ?? null;
+
   useEffect(() => {
-    const url = brand.logo.options[0]?.url;
+    const url = tintLogo ? brand.logo.options[0]?.url : undefined;
     if (!url) return setLogoSvg(undefined);
     let alive = true;
     fetch(url)
@@ -49,31 +62,61 @@ export function ComposeApp() {
     return () => {
       alive = false;
     };
-  }, [brand]);
+  }, [brand, tintLogo]);
+
+  useEffect(() => {
+    document.fonts.ready.then(() => setFontsReady(true));
+  }, []);
 
   useEffect(() => {
     const t = setTimeout(() => saveComposition(doc), 400);
     return () => clearTimeout(t);
   }, [doc]);
 
+  const layers = useGroundLayers(brand.ground, doc.texBack, doc.texFront, dimension, doc.frames.length);
+
+  const theme: FrameTheme = useMemo(
+    () => ({
+      ground: doc.groundKey ? getSurface(brand, doc.groundKey) : null,
+      layers,
+      progress: doc.progress,
+      logoUrl,
+      logoSvg,
+      logoCorner: doc.logoCorner,
+      logoSize: doc.logoSize,
+      headMins,
+    }),
+    [brand, doc.groundKey, doc.progress, doc.logoCorner, doc.logoSize, layers, logoUrl, logoSvg, headMins],
+  );
+
+  const onHeights = useCallback((h: Record<string, number>) => {
+    setHeadMins((prev) => {
+      const keys = new Set([...Object.keys(prev), ...Object.keys(h)]);
+      for (const k of keys) if ((prev[k] ?? 0) !== (h[k] ?? 0)) return h;
+      return prev;
+    });
+  }, []);
+
+  const patchDoc = (p: Partial<Composition>) => setDoc((d) => ({ ...d, ...p }));
   const patch = (p: Partial<Frame>) => setDoc((d) => patchFrame(d, selectedId, p));
 
   const onLayout = (key: string) => {
     const next = getLayout(brand, key);
     // Text, den das neue Layout nicht zeigt, faellt weg — sonst taucht er
-    // beim Zurueckwechseln ueberraschend wieder auf.
-    patch({ layoutId: key, text: pruneText(frame.text, next.slots) });
+    // beim Zurueckwechseln ueberraschend wieder auf. Bilder dagegen bleiben:
+    // gerendert wird nur, was hineinpasst, und ein Wechsel hin und zurueck
+    // soll nichts kosten.
+    patch({
+      layoutId: key,
+      text: pruneText(frame.text, next.slots),
+      tone: !!next.media.tone && frame.tone,
+      roughFrame: defaultRough(next),
+    });
   };
 
-  const addFrame = () => {
+  const addFrame = (layoutId?: string) => {
     if (doc.frames.length >= MAX_FRAMES) return;
-    const nf: Frame = {
-      id: frameId(),
-      layoutId: brand.layouts[0].key,
-      surfaceKey: brand.surfaces[0].key,
-      text: {},
-      media: [],
-    };
+    const nf = emptyFrame(brand, layoutId);
     setDoc((d) => ({ ...d, frames: [...d.frames, nf] }));
     setSelectedId(nf.id);
   };
@@ -87,29 +130,57 @@ export function ComposeApp() {
       return { ...d, frames };
     });
 
-  const onFile = async (file: File | undefined) => {
+  const moveFrame = (from: number, to: number) =>
+    setDoc((d) => {
+      if (from === to) return d;
+      const frames = [...d.frames];
+      const [moved] = frames.splice(from, 1);
+      frames.splice(to, 0, moved);
+      return { ...d, frames };
+    });
+
+  const setFrameLayout = (id: string, layoutId: string) => {
+    setSelectedId(id);
+    setDoc((d) => patchFrame(d, id, { layoutId }));
+  };
+
+  const onAddImage = async (file: File | undefined) => {
     if (!file) return;
     if (!ACCEPTED_TYPES.includes(file.type)) return setError("Format nicht unterstützt (JPG, PNG, WebP, AVIF).");
     if (file.size > MAX_FILE_BYTES) return setError("Datei zu groß (max. 15 MB).");
     try {
       const url = await readDataUrl(file);
-      const keep = frame.media[0];
-      patch({ media: [{ ...emptyMedia(url, file.name), credit: keep?.credit ?? "" }] });
+      patch({ media: [...frame.media, emptyMedia(url, file.name)].slice(0, layout.media.count) });
       setError(null);
     } catch {
       setError("Bild konnte nicht gelesen werden.");
     }
   };
 
-  const media = frame.media[0];
-  const patchMedia = (p: Partial<typeof media>) =>
-    media && patch({ media: [{ ...media, ...p }] });
+  const patchMedia = (i: number, p: Partial<(typeof frame.media)[number]>) =>
+    patch({ media: frame.media.map((m, j) => (j === i ? { ...m, ...p } : m)) });
 
-  const surfaceTiles: TileItem<string>[] = brand.surfaces.map((s) => ({
-    value: s.key,
-    label: s.label,
-    previewStyle: { background: s.bg },
-  }));
+  const removeImage = (i: number) => patch({ media: frame.media.filter((_, j) => j !== i) });
+
+  const onCutout = async (i: number) => {
+    const id = selectedId;
+    const target = doc.frames.find((f) => f.id === id)?.media[i];
+    if (!target || busy) return;
+    setBusy(true);
+    try {
+      const url = await removePersonBackground(target.url);
+      setDoc((d) =>
+        patchFrame(d, id, {
+          media: d.frames.find((f) => f.id === id)!.media.map((m, j) => (j === i ? { ...m, url } : m)),
+        }),
+      );
+      setError(null);
+    } catch {
+      setError("Freistellen fehlgeschlagen.");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const handleExport = async (share: boolean) => {
     setExporting(true);
@@ -121,7 +192,14 @@ export function ComposeApp() {
     try {
       for (let i = 0; i < doc.frames.length; i++) {
         root.render(
-          <FrameView frame={doc.frames[i]} brand={brand} dimension={dimension} logoSvg={logoSvg} />,
+          <FrameView
+            frame={doc.frames[i]}
+            brand={brand}
+            dimension={dimension}
+            theme={theme}
+            index={i}
+            total={doc.frames.length}
+          />,
         );
         // Zwei Frames warten: einer fuer das Rendern, einer fuer die Messung
         // der inhaltsbemessenen Flaeche.
@@ -143,122 +221,63 @@ export function ComposeApp() {
     for (const b of blobs) downloadBlob(b.blob, b.name);
   };
 
-  const thumbTheme = useMemo(() => ({ brand, dimension, logoSvg }), [brand, dimension, logoSvg]);
-
   return (
     <div className="cx-app">
-      <aside className="controls cx-controls">
-        <h1 className="controls-title">{brand.label}</h1>
-        {brand.type.substitute && (
-          <p className="field-note">
-            Schriften sind Ersatz aus Google Fonts, nicht die Hausschriften.
-          </p>
-        )}
-
-        <div className="cx-panel">
-          <h2 className="cx-panel-title">Bild {index + 1}</h2>
-
-          <Segmented ariaLabel="Layout" label="Layout" value={frame.layoutId}
-            options={brand.layouts.map((l) => ({ value: l.key, label: l.label }))}
-            onChange={onLayout} />
-          {layout.hint && <p className="field-note">{layout.hint}</p>}
-
-          <Tiles label="Fläche" items={surfaceTiles} value={frame.surfaceKey ?? brand.surfaces[0].key}
-            onChange={(k) => patch({ surfaceKey: k })} />
-
-          {layout.slots.map((slot) => {
-            const role = brand.roles[slot];
-            if (!role) return null;
-            return (
-              <label className="field" key={slot}>
-                <span>{role.label}</span>
-                <textarea
-                  rows={role.multiline ? 3 : 1}
-                  value={frame.text[slot] ?? ""}
-                  placeholder={role.placeholder}
-                  onChange={(e) => patch(setText(frame, slot, e.target.value))}
-                />
-              </label>
-            );
-          })}
-
-          {layout.media > 0 && (
-            <div className="field">
-              <span>Bild</span>
-              <FileButton label={media ? "Bild ersetzen …" : "Bild wählen …"}
-                accept={ACCEPTED_TYPES.join(",")} onFile={onFile} />
-              {media && (
-                <>
-                  <Slider label={`Größe ${Math.round(media.scale * 100)}%`}
-                    value={Math.round(media.scale * 100)} min={100} max={220} step={5}
-                    onChange={(v) => patchMedia({ scale: v / 100 })} />
-                  <label className="field">
-                    <span>Bildnachweis</span>
-                    <textarea rows={1} value={media.credit} placeholder="Vorname Nachname / Agentur"
-                      onChange={(e) => patchMedia({ credit: e.target.value })} />
-                  </label>
-                </>
-              )}
-            </div>
-          )}
-          {error && <p className="error" role="alert">{error}</p>}
-        </div>
-
-        <div className="cx-panel">
-          <h2 className="cx-panel-title">Ganze Folge</h2>
-          {brand.formats.length > 1 && (
-            <label className="field">
-              <span>Format</span>
-              <select value={doc.formatKey} onChange={(e) => setDoc((d) => ({ ...d, formatKey: e.target.value }))}>
-                {brand.formats.map((f) => <option key={f.key} value={f.key}>{f.label}</option>)}
-              </select>
-            </label>
-          )}
-        </div>
-
-        <div className="export-row">
-          <button className="btn-primary" onClick={() => handleExport(shareSupported)} disabled={exporting}>
-            {exporting ? "Exportiere …" : shareSupported ? "Teilen" : `${doc.frames.length} JPG exportieren`}
-          </button>
-          {shareSupported && (
-            <button className="btn-secondary" onClick={() => handleExport(false)} disabled={exporting}>
-              Speichern
-            </button>
-          )}
-        </div>
-      </aside>
+      <ComposeControls
+        doc={doc}
+        frame={frame}
+        frameNo={index + 1}
+        exporting={exporting}
+        busy={busy}
+        error={error}
+        shareSupported={shareSupported}
+        onDoc={patchDoc}
+        onFrame={patch}
+        onLayout={onLayout}
+        onAddImage={onAddImage}
+        onMedia={patchMedia}
+        onRemoveImage={removeImage}
+        onCutout={onCutout}
+        onExport={handleExport}
+      />
 
       <main className="cx-stage-area">
         <Scaled dimension={dimension} className="cx-preview">
-          <FrameView frame={frame} brand={brand} dimension={dimension} logoSvg={logoSvg} interactive />
+          <FrameView
+            frame={frame}
+            brand={brand}
+            dimension={dimension}
+            theme={theme}
+            index={index}
+            total={doc.frames.length}
+            interactive
+            onMediaMove={(x, y) => patch({ mediaOffX: x, mediaOffY: y })}
+          />
         </Scaled>
       </main>
 
-      <div className="cx-strip">
-        <div className="cx-slots">
-          {doc.frames.map((f, i) => (
-            <div key={f.id} className={`cx-slot${f.id === selectedId ? " active" : ""}`}>
-              <button type="button" className="cx-slot-thumb-btn" onClick={() => setSelectedId(f.id)}>
-                <span className="cx-slot-no">{i + 1}</span>
-                <span className="cx-slot-thumb">
-                  <Scaled dimension={dimension}>
-                    <FrameView frame={f} {...thumbTheme} />
-                  </Scaled>
-                </span>
-              </button>
-              <span className="cx-slot-layout">{getSurface(brand, f.surfaceKey).label}</span>
-              {doc.frames.length > 1 && (
-                <button type="button" className="cx-slot-del" onClick={() => removeFrame(f.id)} aria-label="Bild entfernen">✕</button>
-              )}
-            </div>
-          ))}
-          {doc.frames.length < MAX_FRAMES && (
-            <button type="button" className="cx-slot-add" onClick={addFrame}>
-              <span className="cx-add-plus">＋</span>Bild
-            </button>
-          )}
-        </div>
-      </div>
+      <Filmstrip
+        frames={doc.frames}
+        selectedId={selectedId}
+        dimension={dimension}
+        theme={theme}
+        onSelect={setSelectedId}
+        onAdd={addFrame}
+        onRemove={removeFrame}
+        onMove={moveFrame}
+        onSetLayout={setFrameLayout}
+      />
+
+      {/* Kopf-Hoehen offscreen vermessen → einheitlicher Absatz-Beginn. */}
+      <HeadMeasurer
+        frames={doc.frames}
+        brand={brand}
+        dimension={dimension}
+        fontsReady={fontsReady}
+        onHeights={onHeights}
+      />
+
+      {busy && <BusyOverlay {...CUTOUT_BUSY} />}
     </div>
   );
 }

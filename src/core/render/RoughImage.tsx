@@ -14,10 +14,10 @@ type Item = { url: string; scale: number };
 type Props = { items: Item[]; frameColor?: string; thickness?: number; rough?: number };
 
 export function RoughImage({ items, frameColor, thickness = 12, rough = 11 }: Props) {
-  const fid = `cxframe-${useId().replace(/:/g, "")}`;
+  const fid = `fpframe-${useId().replace(/:/g, "")}`;
   const n = items.length;
   return (
-    <div className="cx-rough">
+    <div className="fp-rough">
       <svg width="0" height="0" aria-hidden style={{ position: "absolute" }}>
         <filter id={fid} x="-40%" y="-40%" width="180%" height="180%" colorInterpolationFilters="sRGB">
           <feComponentTransfer in="SourceAlpha" result="solid">
@@ -38,7 +38,7 @@ export function RoughImage({ items, frameColor, thickness = 12, rough = 11 }: Pr
           </feMerge>
         </filter>
       </svg>
-      <div className="cx-rough-grp" style={{ filter: `url(#${fid})` }}>
+      <div className="fp-rough-grp" style={{ filter: `url(#${fid})` }}>
         {items.map((it, i) => {
           const leftPct = n <= 1 ? 50 : 15 + (i / (n - 1)) * 70;
           return (

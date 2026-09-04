@@ -1,19 +1,18 @@
 import { useState } from "react";
 import App from "./App";
-import { CarouselApp } from "./carousel/CarouselApp";
 import { ComposeApp } from "./compose/ComposeApp";
 import { useBrand } from "./brand/context";
 
-// Werkzeug-Umschalter. „Beitrag" ist der markengetriebene Weg (ein
-// Dokumentmodell, Layouts und Rollen aus dem Marken-Paket).
+// Werkzeug-Umschalter. „Beitrag" ist der markengetriebene Weg: ein
+// Dokumentmodell, Layouts und Rollen aus dem Marken-Paket. Das Langtext-
+// Werkzeug ist darin aufgegangen.
 //
-// „Einzelpost" und „Langtext" sind freshs alte Werkzeuge mit eigenem Modell.
-// Sie brauchen Faehigkeiten, die nicht jede Marke hat (Sticker-Geometrie,
-// Farbpalette, texturierter Grund) — bei einer Marke ohne sie erscheinen sie
-// gar nicht erst. Genau dafuer ist das Faehigkeiten-Modell im Vertrag da.
-// Sie ziehen nach, sobald sie auf die Composition migriert sind.
+// „Einzelpost" ist freshs letztes altes Werkzeug mit eigenem Modell. Es
+// braucht Faehigkeiten, die nicht jede Marke hat (Sticker-Geometrie,
+// Farbpalette, texturierter Grund) — bei einer Marke ohne sie erscheint es
+// gar nicht erst. Es zieht nach, sobald es auf die Composition migriert ist.
 
-type Tool = "compose" | "single" | "carousel";
+type Tool = "compose" | "single";
 const KEY = "freshpost.tool";
 
 export function Root() {
@@ -22,8 +21,7 @@ export function Root() {
 
   const [tool, setTool] = useState<Tool>(() => {
     const saved = localStorage.getItem(KEY);
-    if (legacy && (saved === "single" || saved === "carousel")) return saved;
-    return "compose";
+    return legacy && saved === "single" ? "single" : "compose";
   });
 
   const choose = (t: Tool) => {
@@ -37,12 +35,7 @@ export function Root() {
 
   const tabs: { id: Tool; label: string }[] = [
     { id: "compose", label: "Beitrag" },
-    ...(legacy
-      ? ([
-          { id: "single", label: "Einzelpost" },
-          { id: "carousel", label: "Langtext" },
-        ] as const)
-      : []),
+    ...(legacy ? ([{ id: "single", label: "Einzelpost" }] as const) : []),
   ];
 
   return (
@@ -55,9 +48,7 @@ export function Root() {
           </button>
         ))}
       </nav>
-      <div className="root-body">
-        {tool === "single" && legacy ? <App /> : tool === "carousel" && legacy ? <CarouselApp /> : <ComposeApp />}
-      </div>
+      <div className="root-body">{tool === "single" && legacy ? <App /> : <ComposeApp />}</div>
     </div>
   );
 }

@@ -68,15 +68,54 @@ export type TextRole = {
   placeholder?: string;
   prefix?: string; // fest vorangestelltes Zeichen, z. B. "› "
   ruleAfter?: boolean; // kurzer Trennstrich darunter (Interview-Frage)
+  nowrap?: boolean; // nie umbrechen — darf ueber die Textzone hinauswachsen
   // Inline-Auszeichnung im Fliesstext. Bei fresh eine farbige Box, bei SZ ein
   // Wechsel der Schrift — derselbe Marker, anderes Mittel. Die Liste bildet
   // die Marker-Slots ab: *wort* → [0], ~wort~ → [1], _wort_ → [2].
   emphasis?: EmphasisStyle[];
+  // Diese Rolle darf je Frame eine Farbe aus der Palette tragen. Marken ohne
+  // Farb-Faehigkeit (SZ) lassen es weg — dort folgt die Schriftfarbe aus der
+  // Flaeche.
+  tint?: boolean;
+  // Diese Rolle darf je Frame als farbige Box gesetzt werden statt flach im
+  // Satz. Die Neigung steht im Frame, nicht hier: sie gilt fuer die Gruppe.
+  sticker?: StickerStyle;
+};
+
+// Eine Rolle als Farbbox. Masse in em der eigenen Schriftgroesse, damit sie
+// der Rolle folgen und nicht dem Format.
+export type StickerStyle = {
+  padX: number;
+  padY: number;
+  // Bruchteil der eigenen Schriftgroesse, um den die Box in die Rolle darueber
+  // gezogen wird — die Boxen verschmelzen, ohne Text zu verdecken.
+  overlap: number;
+  shadow?: string;
 };
 
 // --- Layout ----------------------------------------------------------------
 // Wo die Farbflaeche sitzt und welche Rollen in welcher Reihenfolge hinein.
-export type BandPlace = "top" | "bottom" | "full" | "none";
+// "side" ist eine stehende Spalte statt eines liegenden Bandes — dieselbe
+// Flaeche, andere Achse. Die Randspalte des Langtext-Werkzeugs ist damit ein
+// Layout wie jedes andere.
+export type BandPlace = "top" | "bottom" | "full" | "none" | "side";
+
+// Wo das Bild eines Layouts liegt:
+//   zone  — in der Flaeche, die die Farbflaeche uebrig laesst (Regelfall)
+//   fill  — randabfallend hinter allem (Bild-Overlay)
+//   float — frei gesetzter Kasten, darf die Farbflaeche ueberlappen (Cutouts
+//           neben einer Randspalte)
+export type MediaPlace = "zone" | "fill" | "float";
+
+export type MediaSpec = {
+  count: number; // 0 = das Layout zeigt kein Bild
+  place: MediaPlace;
+  // Nur bei "float": Kasten als Bruchteile des Formats, von unten rechts.
+  box?: { width: number; height: number; right: number; bottom: number };
+  scrim?: boolean; // Abdunkelung unter Text, der auf dem Bild steht
+  tone?: boolean; // tonale Einfaerbung waehlbar (braucht Faehigkeit image)
+  frame?: boolean; // rauer Rand waehlbar (braucht Faehigkeit image)
+};
 
 export type Layout = {
   key: string;
@@ -84,13 +123,28 @@ export type Layout = {
   hint?: string;
   band: BandPlace;
   // "auto" = die Flaeche waechst mit ihrem Inhalt (SZ). Eine Zahl = fester
-  // Bruchteil der Hoehe.
+  // Bruchteil der Querachse: der Hoehe bei top/bottom, der Breite bei side.
   bandSize: "auto" | number;
+  sideAt?: "left" | "right"; // nur bei band "side"
+  // Schraege Flaechenkante. `edgeCut` ist der Bruchteil der Flaechenhoehe, um
+  // den die Kante von rechts nach links ansteigt.
+  edge?: "diagonal";
+  edgeCut?: number;
+  // Bruchteil der Hoehe, um den der Satz ueber die Flaechenkante hinausragen
+  // darf — bei fresh ragt der Sticker absichtlich in das Bild.
+  textOverhang?: number;
+  // Die ersten n Rollen bilden den Kopf. Seine Hoehe wird ueber alle Frames
+  // desselben Layouts angeglichen, damit die Absaetze gleich hoch beginnen.
+  headSlots?: number;
   align: "top" | "bottom"; // Ausrichtung des Satzes in seiner Zone
   textWidth: number; // Bruchteil der Breite
+  // Innenabstaende der Textzone, Bruchteile der Breite. Ohne Angabe gilt
+  // brand.bandPadding. Ein Layout mit Wischleiste oder frei gesetztem Logo
+  // braucht oben oder unten mehr Luft als eine reine Farbflaeche.
+  padTop?: number;
+  padBottom?: number;
   slots: string[]; // Rollenschluessel, in Satzreihenfolge
-  media: number; // wie viele Bilder das Layout nutzt
-  scrim?: boolean; // Abdunkelung unter Text, der auf dem Bild steht
+  media: MediaSpec;
 };
 
 // --- Logo ------------------------------------------------------------------
@@ -126,6 +180,9 @@ export type BrandCore = {
   // Grund hinter dem Export. JPEG hat kein Alpha, es muss etwas darunter
   // liegen; ausgeschrieben, weil html-to-image keine Custom Properties aufloest.
   exportBackground: string;
+  // Fortschrittsanzeige eines mehrteiligen Beitrags. Fehlt sie, bietet das
+  // Werkzeug keine an — die Marke sagt, ob und in welchen Farben.
+  progress?: { past: string; now: string; future: string };
 };
 
 // ===========================================================================
@@ -199,6 +256,9 @@ export type GroundCapability = {
   tint: string;
   paperUrl: string;
   sheetUrl: string;
+  // Farbe der Halbton-Punkte. Sie werden per multiply ueber den Grund gelegt,
+  // sind also eine Abdunkelung — kein Grau ist wie das andere.
+  halftoneInk: string;
 };
 
 // ===========================================================================

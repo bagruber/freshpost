@@ -1,23 +1,45 @@
-import type { CSSProperties } from "react";
-import type { Brand, Surface, TextRole } from "../../brand/contract";
-import type { Frame } from "../doc/composition";
+import type { CSSProperties, Ref } from "react";
+import type { Brand, Layout, Surface, TextRole } from "../../brand/contract";
+import type { Frame, RoleStyle } from "../doc/composition";
 import { parseMarkers } from "../text/markers";
 
 // Setzt die Rollen eines Layouts untereinander. Der Kern weiss nicht, was eine
 // "Schlagzeile" ist — er liest die Rolle aus dem Marken-Paket und wendet an,
 // was dort steht.
+//
+// Zwei Dinge darf der Frame je Rolle variieren, und nur, wenn die Rolle es
+// freigibt: eine Farbe aus der Palette (`tint`) und die Setzung als gekippte
+// Farbbox (`sticker`). Aufeinanderfolgende Sticker werden als EINE Gruppe
+// gekippt — einzeln gekippt haengt ihr Abstand an der Neigung.
 
 type Props = {
   frame: Frame;
   brand: Brand;
   surface: Surface;
-  slots: string[];
+  layout: Layout;
   width: number; // Formatbreite in Export-Pixeln
+  // Mindesthoehe des Kopfes, ueber alle Frames desselben Layouts gemessen.
+  headMin?: number;
+  headRef?: Ref<HTMLDivElement>;
+  headOnly?: boolean; // nur den Kopf setzen (zum Vermessen, siehe HeadMeasurer)
 };
 
 const fs = (width: number, fraction: number) => Math.round(width * fraction);
 
-function roleStyle(role: TextRole, brand: Brand, surface: Surface, width: number): CSSProperties {
+// Was die Rolle in DIESEM Frame traegt. Ohne Farb-Faehigkeit oder ohne
+// Freigabe durch die Rolle bleibt es bei der Schriftfarbe der Flaeche.
+function paint(role: TextRole, style: RoleStyle | undefined, brand: Brand, surface: Surface) {
+  const asSticker = !!role.sticker && !!style?.sticker;
+  const colors = brand.colors;
+  if (!colors || !role.tint) return { asSticker: false, color: surface.ink, background: undefined };
+  const key = style?.colorKey && style.colorKey in colors.palette ? style.colorKey : colors.order[0];
+  const entry = colors.palette[key];
+  return asSticker
+    ? { asSticker: true, color: entry.on, background: entry.bg }
+    : { asSticker: false, color: entry.flush, background: undefined };
+}
+
+function roleStyle(role: TextRole, brand: Brand, width: number): CSSProperties {
   return {
     fontFamily: role.font === "display" ? brand.type.display : brand.type.body,
     fontWeight: role.weight,
@@ -26,9 +48,7 @@ function roleStyle(role: TextRole, brand: Brand, surface: Surface, width: number
     lineHeight: role.lineHeight,
     letterSpacing: role.tracking ? `${role.tracking}em` : undefined,
     textTransform: role.upper ? "uppercase" : undefined,
-    color: surface.ink,
-    marginBottom: fs(width, role.gapAfter),
-    whiteSpace: "pre-wrap",
+    whiteSpace: role.nowrap ? "nowrap" : "pre-wrap",
   };
 }
 
@@ -66,28 +86,78 @@ function renderRuns(text: string, role: TextRole, brand: Brand) {
   ));
 }
 
-export function TextStack({ frame, brand, surface, slots, width }: Props) {
-  const visible = slots.filter((key) => (frame.text[key] ?? "").trim().length > 0);
-  if (visible.length === 0) return null;
+type Piece = { key: string; role: TextRole; text: string; sticker: boolean; color: string; background?: string };
 
+// Aufeinanderfolgende Sticker zu Gruppen buendeln; alles andere steht allein.
+function group(pieces: Piece[]): Piece[][] {
+  const out: Piece[][] = [];
+  for (const p of pieces) {
+    const last = out[out.length - 1];
+    if (p.sticker && last && last[0].sticker) last.push(p);
+    else out.push([p]);
+  }
+  return out;
+}
+
+function Block({ pieces, brand, surface, width, tilt }: {
+  pieces: Piece[];
+  brand: Brand;
+  surface: Surface;
+  width: number;
+  tilt: number;
+}) {
   return (
     <>
-      {visible.map((key, i) => {
-        const role = brand.roles[key];
-        if (!role) return null;
-        const last = i === visible.length - 1;
-        const style = roleStyle(role, brand, surface, width);
-        if (last) style.marginBottom = 0;
-        const content = frame.text[key];
+      {group(pieces).map((members) => {
+        const last = members[members.length - 1];
+        const gap = fs(width, last.role.gapAfter);
+
+        if (members[0].sticker) {
+          return (
+            <div
+              key={members[0].key}
+              className="fp-stack"
+              style={{ transform: `rotate(${tilt}deg)`, marginBottom: gap }}
+            >
+              {members.map((p, i) => {
+                const st = p.role.sticker!;
+                const size = fs(width, p.role.size);
+                return (
+                  <span
+                    key={p.key}
+                    className="fp-sticker"
+                    style={{
+                      ...roleStyle(p.role, brand, width),
+                      color: p.color,
+                      background: p.background,
+                      padding: `${st.padY}em ${st.padX}em`,
+                      boxShadow: st.shadow,
+                      marginTop: i === 0 ? 0 : -size * st.overlap,
+                      zIndex: members.length - i,
+                    }}
+                  >
+                    {p.role.prefix}
+                    {p.text}
+                  </span>
+                );
+              })}
+            </div>
+          );
+        }
+
+        const p = members[0];
         return (
-          <div key={key} className="fp-role" style={style}>
-            {role.prefix}
-            {renderRuns(content, role, brand)}
-            {role.ruleAfter && (
+          <div
+            key={p.key}
+            className="fp-role"
+            style={{ ...roleStyle(p.role, brand, width), color: p.color, marginBottom: gap }}
+          >
+            {p.role.prefix}
+            {renderRuns(p.text, p.role, brand)}
+            {p.role.ruleAfter && (
               <span
                 className="fp-role-rule"
                 style={{
-                  display: "block",
                   width: fs(width, 0.105),
                   height: Math.max(2, fs(width, 0.005)),
                   background: surface.ink,
@@ -98,6 +168,41 @@ export function TextStack({ frame, brand, surface, slots, width }: Props) {
           </div>
         );
       })}
+    </>
+  );
+}
+
+export function TextStack({ frame, brand, surface, layout, width, headMin, headRef, headOnly }: Props) {
+  const pieces = layout.slots
+    .filter((key) => brand.roles[key] && (frame.text[key] ?? "").trim().length > 0)
+    .map((key) => {
+      const role = brand.roles[key];
+      const { asSticker, color, background } = paint(role, frame.roleStyle[key], brand, surface);
+      return { key, role, text: frame.text[key], sticker: asSticker, color, background };
+    });
+
+  // Der Kopf sind die ersten n Rollen des Layouts (nicht der belegten): so
+  // beginnen die Absaetze ueber alle Frames desselben Layouts gleich hoch.
+  const headKeys = new Set(layout.slots.slice(0, layout.headSlots ?? 0));
+  const head = pieces.filter((p) => headKeys.has(p.key));
+  const rest = pieces.filter((p) => !headKeys.has(p.key));
+  const common = { brand, surface, width, tilt: frame.tilt };
+
+  if (headOnly) {
+    return (
+      <div className="fp-head" ref={headRef}>
+        <Block pieces={head} {...common} />
+      </div>
+    );
+  }
+  if (headKeys.size === 0) return <Block pieces={rest} {...common} />;
+
+  return (
+    <>
+      <div className="fp-head" ref={headRef} style={{ minHeight: headMin }}>
+        <Block pieces={head} {...common} />
+      </div>
+      <Block pieces={rest} {...common} />
     </>
   );
 }

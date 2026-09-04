@@ -57,6 +57,38 @@ describe.each(brands)("Pflichtteil: %s", (_name, brand) => {
     }
   });
 
+  it("beschreibt jede Anordnung vollstaendig", () => {
+    // Die Felder haengen voneinander ab. Wer eine stehende Spalte deklariert,
+    // muss auch sagen, an welcher Seite sie steht — sonst rendert sie links,
+    // weil das der Vorgabewert ist, und niemand merkt den fehlenden Wert.
+    for (const l of brand.layouts) {
+      if (l.band === "side") expect(l.sideAt, `${l.key}: band "side" ohne sideAt`).toBeDefined();
+      if (l.band === "side") expect(typeof l.bandSize, `${l.key}: stehende Spalte braucht ein Mass`).toBe("number");
+      if (l.edge) expect(l.edgeCut, `${l.key}: edge ohne edgeCut`).toBeGreaterThan(0);
+      if (l.media.place === "float") expect(l.media.box, `${l.key}: place "float" ohne box`).toBeDefined();
+      if (l.media.count === 0) expect(l.media.place, `${l.key}: kein Bild, also keine Platzierung`).toBe("zone");
+      expect(l.headSlots ?? 0).toBeLessThanOrEqual(l.slots.length);
+    }
+  });
+
+  it("verlangt fuer Bildbehandlung im Layout auch die Faehigkeit dazu", () => {
+    for (const l of brand.layouts) {
+      if (l.media.tone || l.media.frame) {
+        expect(brand.image, `${l.key} will eine Bildbehandlung, die Marke hat keine`).toBeDefined();
+      }
+    }
+  });
+
+  it("gibt eine Rolle nur dann als Sticker frei, wenn sie auch eine Farbe traegt", () => {
+    // Eine Farbbox ohne Farbe waere ein unsichtbarer Zustand in der Bedienung.
+    for (const [k, role] of Object.entries(brand.roles)) {
+      if (!role.sticker) continue;
+      expect(role.tint, `Rolle ${k}: sticker ohne tint`).toBe(true);
+      expect(brand.colors, `Rolle ${k}: sticker ohne Farbpalette`).toBeDefined();
+      expect(role.sticker.padX).toBeGreaterThan(0);
+    }
+  });
+
   it("laesst Platz: Satzkante und Flaechen-Innenabstand sind gesetzt", () => {
     expect(brand.margin).toBeGreaterThan(0);
     expect(brand.margin).toBeLessThan(0.3);
@@ -157,8 +189,23 @@ describe("Die Marken unterscheiden sich weit genug, um etwas zu beweisen", () =>
     expect(Object.keys(fresh.roles)).not.toContain("question");
   });
 
+  it("bauen ihre Anordnungen aus verschiedenen Teilen des Vokabulars", () => {
+    // fresh braucht die stehende Spalte und die schraege Kante, SZ keine von
+    // beiden — genau dafuer sind sie in den Vertrag gekommen.
+    expect(fresh.layouts.some((l) => l.band === "side")).toBe(true);
+    expect(fresh.layouts.some((l) => l.edge === "diagonal")).toBe(true);
+    expect(fresh.layouts.some((l) => l.media.place === "fill")).toBe(true);
+    expect(sz.layouts.every((l) => l.band !== "side" && !l.edge)).toBe(true);
+    expect(sz.layouts.every((l) => l.media.place === "zone")).toBe(true);
+    // Und die Spalte steht bei den beiden Marken, die eine haben, auf
+    // verschiedenen Seiten.
+    expect(fresh.layouts.find((l) => l.band === "side")!.sideAt).toBe("left");
+    expect(probe.layouts.find((l) => l.band === "side")!.sideAt).toBe("right");
+  });
+
   it("SZ kennt eine inhaltsbemessene Flaeche, probe auch eine feste", () => {
     expect(sz.layouts.every((l) => l.bandSize === "auto")).toBe(true);
+    expect(sz.progress).toBeUndefined(); // SZ bietet keine Wischleiste an
     expect(probe.layouts.some((l) => typeof l.bandSize === "number")).toBe(true);
   });
 

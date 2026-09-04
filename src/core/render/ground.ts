@@ -1,19 +1,15 @@
-// Textur-Overlays. Papier & Halbton werden als „Blatt" im Seitenverhältnis der
-// Spannweite (span × Slide) erzeugt und in SlideView pro Slide ausgeschnitten →
-// beim Wischen läuft die geklebte-Papier-Struktur durch. Zur Performance in
-// gedeckelter Auflösung gezeichnet und per background-size UNIFORM wieder
-// hochskaliert (gleiches Seitenverhältnis → Halbton-Punkte bleiben rund).
-
+// Textur-Overlays fuer einen texturierten Grund (Faehigkeit `ground`).
 //
-// Die Papierquelle kommt aus dem Marken-Paket (brand.surface.sheetUrl) und
-// wird je URL genau einmal dekodiert.
+// Papier und Halbton werden als Blatt im Seitenverhaeltnis der Spannweite
+// (span x Frame) erzeugt und in FrameView je Frame ausgeschnitten - beim
+// Wischen laeuft die Struktur durch. Zur Performance in gedeckelter Aufloesung
+// gezeichnet und per background-size UNIFORM wieder hochskaliert (gleiches
+// Seitenverhaeltnis, also bleiben die Halbton-Punkte rund).
+//
+// Die Papierquelle und die Punktfarbe kommen aus dem Marken-Paket; das
+// Verfahren selbst gehoert dem Kern.
 
 const MAX_W = 1800;
-
-// Halbton-Punkte werden in Grau gezeichnet und erst vom Tint der Marke
-// eingefaerbt (multiply). Deshalb steht der Wert hier und nicht im
-// Marken-Paket: er ist Teil des Verfahrens, nicht der Marke.
-const HALFTONE_GREY = "#565d64";
 
 const imgCache = new Map<string, Promise<HTMLImageElement>>();
 function loadPaper(src: string): Promise<HTMLImageElement> {
@@ -71,8 +67,8 @@ export function makePaperSheet(spanW: number, height: number, src: string): Prom
 }
 
 // Halbton des Papiers als Blatt: feines Raster, Punktradius ∝ Dunkelheit.
-export function makeHalftoneSheet(spanW: number, height: number, src: string): Promise<string> {
-  const key = `${spanW}x${height}`;
+export function makeHalftoneSheet(spanW: number, height: number, src: string, ink: string): Promise<string> {
+  const key = `${spanW}x${height}x${ink}`;
   const hit = halftoneCache.get(key);
   if (hit) return hit;
   const p = (async () => {
@@ -92,7 +88,7 @@ export function makeHalftoneSheet(spanW: number, height: number, src: string): P
     const ctx = out.getContext("2d")!;
     const cell = 4; // fein → wirkt wie geklebtes Papier
     const maxR = cell * 0.66;
-    ctx.fillStyle = HALFTONE_GREY;
+    ctx.fillStyle = ink;
     for (let y = 0; y < h; y += cell) {
       for (let x = 0; x < w; x += cell) {
         const i = (y * w + x) * 4;

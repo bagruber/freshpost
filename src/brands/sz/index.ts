@@ -80,25 +80,29 @@ const layouts: Layout[] = [
     key: "photoTitle", label: "Titel über Foto",
     hint: "Bild randabfallend, Titel darauf. Abdunkelung hält den Text lesbar.",
     band: "none", bandSize: "auto", align: "top", textWidth: 0.86,
-    slots: ["kicker", "headline", "quote", "dek"], media: 1, scrim: true,
+    slots: ["kicker", "headline", "quote", "dek"],
+    media: { count: 1, place: "zone", scrim: true },
   },
   {
     key: "bandBottom", label: "Fläche unten",
     hint: "Bild oben, Farbfläche unten — sie wächst mit ihrem Text.",
     band: "bottom", bandSize: "auto", align: "top", textWidth: 0.82,
-    slots: ["kicker", "headline", "quote", "dek", "body", "cta"], media: 1,
+    slots: ["kicker", "headline", "quote", "dek", "body", "cta"],
+    media: { count: 1, place: "zone" },
   },
   {
     key: "bandTop", label: "Fläche oben",
     hint: "Farbfläche am Kopf, Bild darunter.",
     band: "top", bandSize: "auto", align: "top", textWidth: 0.86,
-    slots: ["kicker", "headline", "body"], media: 1,
+    slots: ["kicker", "headline", "body"],
+    media: { count: 1, place: "zone" },
   },
   {
     key: "fullSurface", label: "Vollfläche",
     hint: "Kein Bild — nur Farbe und Satz. Auch die Interview-Seiten.",
     band: "full", bandSize: "auto", align: "top", textWidth: 0.86,
-    slots: ["question", "headline", "body", "cta"], media: 0,
+    slots: ["question", "headline", "body", "cta"],
+    media: { count: 0, place: "zone" },
   },
 ];
 

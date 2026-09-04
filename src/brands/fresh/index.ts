@@ -43,18 +43,27 @@ const surfaces: Surface[] = [
 ];
 
 // --- Textrollen -------------------------------------------------------------
-// Barlow Condensed traegt die Aussage, Raleway den Fliesstext — die Verteilung
-// aus dem Langtext-Werkzeug, jetzt im gemeinsamen Vokabular.
+// Barlow Condensed traegt die Aussage, Raleway den Fliesstext. Ueberzeile und
+// Ueberschrift duerfen eine Palettenfarbe tragen (`tint`) und als gekippter
+// Sticker gesetzt werden (`sticker`) — das ist freshs Handschrift.
+const STICKER_SHADOW = "0 8px 20px rgba(0, 0, 0, 0.42)";
+
 const roles: Record<string, TextRole> = {
   kicker: {
     key: "kicker", label: "Überzeile", font: "display", weight: 700,
     size: 0.026, lineHeight: 1.3, tracking: 0.14, upper: true,
     gapAfter: 0.02, multiline: false, placeholder: "z. B. Kapitel 01",
+    tint: true,
+    sticker: { padX: 0.42, padY: 0.16, overlap: 0, shadow: "0 6px 16px rgba(0, 0, 0, 0.4)" },
   },
   headline: {
     key: "headline", label: "Überschrift", font: "display", weight: 800,
     size: 0.076, lineHeight: 1.04, gapAfter: 0.038, multiline: true,
     placeholder: "Die Überschrift",
+    tint: true,
+    // overlap: die Ueberschrift rueckt in die Ueberzeile hinein, sodass beide
+    // Boxen verschmelzen, ohne Text zu verdecken.
+    sticker: { padX: 0.36, padY: 0.16, overlap: 0.1, shadow: STICKER_SHADOW },
   },
   body: {
     key: "body", label: "Fließtext", font: "body", weight: 500,
@@ -68,39 +77,73 @@ const roles: Record<string, TextRole> = {
     ],
   },
   quote: {
-    key: "quote", label: "Zitat", font: "body", weight: 500, italic: true,
-    size: 0.06, lineHeight: 1.3, gapAfter: 0.028, multiline: true,
-    placeholder: "„Ein Zitat“",
+    key: "quote", label: "Zitat", font: "display", weight: 700,
+    size: 0.06, lineHeight: 1.04, gapAfter: 0.024, multiline: true,
+    prefix: "„", placeholder: "Ein Zitat",
   },
-  attribution: {
-    key: "attribution", label: "Quelle", font: "body", weight: 600,
-    size: 0.03, lineHeight: 1.35, gapAfter: 0, multiline: true,
-    placeholder: "Name\nRolle",
+  source: {
+    key: "source", label: "Quelle", font: "display", weight: 700,
+    size: 0.0336, lineHeight: 1.2, tracking: 0.03, upper: true,
+    gapAfter: 0.004, multiline: false, placeholder: "Vorname Nachname",
+  },
+  sourceRole: {
+    key: "sourceRole", label: "Rolle", font: "body", weight: 500,
+    size: 0.03, lineHeight: 1.35, gapAfter: 0, multiline: false,
+    placeholder: "Funktion, Ort",
   },
 };
 
 // --- Layouts ----------------------------------------------------------------
-// Fuer den gemeinsamen Renderer. Die vier Sonder-Layouts des Langtext-
-// Werkzeugs (Diagonale, Randspalte …) leben vorerst weiter in src/carousel/
-// und ziehen erst nach, wenn sie migriert werden.
+// Die vier Vorlagen des Langtext-Werkzeugs, jetzt im gemeinsamen Vokabular —
+// plus die Flaeche unten, die fresh aus dem Beitrag-Werkzeug mitbringt.
+//
+// Die Innenabstaende sind grosszuegiger als brand.bandPadding, weil oben und
+// unten die Wischleiste und das Logo liegen.
+const PAD_TOP = 0.13;
+const PAD_BOTTOM = 0.14;
+
 const layouts: Layout[] = [
   {
-    key: "photoTitle", label: "Titel über Foto",
-    hint: "Bild randabfallend, Text darauf.",
-    band: "none", bandSize: "auto", align: "bottom", textWidth: 0.84,
-    slots: ["kicker", "headline", "quote"], media: 1, scrim: true,
+    key: "typo", label: "Vollfläche",
+    hint: "Kein Bild — der Satz ist die Gestaltung, mit Akzent-Wörtern.",
+    band: "full", bandSize: "auto", align: "top", textWidth: 0.85,
+    padTop: PAD_TOP, padBottom: PAD_BOTTOM, headSlots: 2,
+    slots: ["kicker", "headline", "body", "quote", "source", "sourceRole"],
+    media: { count: 0, place: "zone" },
+  },
+  {
+    key: "diagonal", label: "Diagonale",
+    hint: "Bild oben, Fläche unten — getrennt durch den schrägen Schnitt.",
+    band: "bottom", bandSize: 0.56, edge: "diagonal", edgeCut: 0.12,
+    // Der Sticker ragt absichtlich ueber die Naht ins Bild.
+    textOverhang: 0.04,
+    align: "top", textWidth: 0.85, padTop: 0, padBottom: PAD_BOTTOM, headSlots: 2,
+    slots: ["kicker", "headline", "body"],
+    media: { count: 1, place: "zone", frame: true },
+  },
+  {
+    key: "sidebar", label: "Randspalte",
+    hint: "Bilder seitlich, Satz daneben — gut für Zitate.",
+    band: "side", bandSize: 0.6, sideAt: "left",
+    align: "top", textWidth: 0.45, padTop: 0.078, padBottom: 0.084, headSlots: 2,
+    slots: ["kicker", "headline", "quote", "body", "source", "sourceRole"],
+    // Die Cutouts duerfen in die Spalte hineinragen — deshalb "float".
+    media: { count: 3, place: "float", box: { width: 0.46, height: 0.9, right: 0, bottom: 0 }, frame: true },
+  },
+  {
+    key: "overlay", label: "Bild-Overlay",
+    hint: "Bild randabfallend, Satz darauf — tonal oder vollfarbig.",
+    band: "none", bandSize: "auto", align: "bottom", textWidth: 0.85,
+    padTop: PAD_TOP, padBottom: PAD_BOTTOM, headSlots: 2,
+    slots: ["kicker", "headline", "body"],
+    media: { count: 1, place: "fill", scrim: true, tone: true },
   },
   {
     key: "bandBottom", label: "Fläche unten",
-    hint: "Bild oben, Farbfläche unten — sie wächst mit ihrem Text.",
-    band: "bottom", bandSize: "auto", align: "top", textWidth: 0.84,
-    slots: ["kicker", "headline", "body"], media: 1,
-  },
-  {
-    key: "fullSurface", label: "Vollfläche",
-    hint: "Kein Bild — Verlauf und Satz.",
-    band: "full", bandSize: "auto", align: "top", textWidth: 0.86,
-    slots: ["kicker", "headline", "body", "quote", "attribution"], media: 0,
+    hint: "Bild oben, Farbfläche unten — sie wächst mit ihrem Satz.",
+    band: "bottom", bandSize: "auto", align: "top", textWidth: 0.84, headSlots: 2,
+    slots: ["kicker", "headline", "body"],
+    media: { count: 1, place: "zone" },
   },
 ];
 
@@ -121,8 +164,10 @@ export const fresh: Brand = {
 
   logo: {
     options: logos,
-    // Bewusst wenige, feste Positionen — unten in der Safety-Zone.
+    // Bewusst wenige, feste Positionen — in der Safety-Zone. Oben mittig gibt
+    // es, weil bei mehrteiligen Beiträgen die Wischleiste unten stehen kann.
     placements: [
+      { key: "tc", label: "↑" },
       { key: "bl", label: "↙" },
       { key: "bc", label: "↓" },
       { key: "br", label: "↘" },
@@ -142,6 +187,9 @@ export const fresh: Brand = {
   bandPadding: 0.075,
   creditLabel: { photo: "", illustration: "" }, // fresh weist Bilder nicht aus
   exportBackground: "#132026", // --fresh-dark-d, ausgeschrieben
+
+  // Wischleiste: erledigt kräftig, aktuell in Rose, kommend nur angedeutet.
+  progress: { past: "var(--fresh-wind)", now: "var(--fresh-rose)", future: "rgba(255,255,255,0.18)" },
 
   // === Fähigkeiten ===
   colors: {
@@ -207,5 +255,8 @@ export const fresh: Brand = {
     tint: "var(--illu-tint)",
     paperUrl,
     sheetUrl,
+    // Halbton-Punkte liegen per multiply auf dem Grund: ein gedecktes Grau,
+    // das River abdunkelt statt es grau zu färben.
+    halftoneInk: "#565d64",
   },
 };
