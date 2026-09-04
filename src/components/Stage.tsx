@@ -1,5 +1,5 @@
 import { forwardRef, type ReactNode } from "react";
-import type { Dimension } from "../lib/dimensions";
+import type { Dimension } from "../core/canvas/dimension";
 import { Scaled } from "../core/canvas/Scaled";
 
 // Die Vorschau-Flaeche des Einzelpost-Werkzeugs: der skalierte Inhalt aus

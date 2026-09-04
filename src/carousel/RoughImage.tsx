@@ -13,7 +13,7 @@ const TURB_FREQ = 0.004;
 type Item = { url: string; scale: number };
 type Props = { items: Item[]; frameColor?: string; thickness?: number; rough?: number };
 
-export function RoughImage({ items, frameColor = "#ffffff", thickness = 12, rough = 11 }: Props) {
+export function RoughImage({ items, frameColor, thickness = 12, rough = 11 }: Props) {
   const fid = `cxframe-${useId().replace(/:/g, "")}`;
   const n = items.length;
   return (

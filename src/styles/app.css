@@ -2,10 +2,14 @@
 
 html, body, #root { height: 100%; margin: 0; }
 
+/* Der Fallback greift nur im Fenster zwischen CSS-Parse und dem ersten Skript
+   (main.tsx setzt die Marken-Tokens synchron). Ohne ihn blitzt Weiss auf.
+   Er gehoert bewusst hierher und nicht in den Kern: app.css ist die Huelle
+   dieser App, und die kennt ihre Marke. */
 body {
-  font-family: var(--font-body);
-  background: var(--color-bg-page);
-  color: var(--color-text-primary);
+  font-family: var(--font-body, system-ui, sans-serif);
+  background: var(--color-bg-page, #132026);
+  color: var(--color-text-primary, #ffffff);
 }
 
 /* Layout: Desktop = Controls links neben Canvas. Mobile = Canvas füllt den
@@ -399,18 +403,12 @@ body {
 }
 
 /* =======================================================================
-   HINTERGRUND-EFFEKTE (Illustrations-/Person-Mode) — hier schnell justieren
-   Rezept wie in den Illustrator-Grafiken: Struktur in Grau, dann ein
-   #0b1316-Layer in multiply 100% darüber. isolation hält den Blend lokal.
+   HINTERGRUND-EFFEKTE (Illustrations-/Person-Mode)
+   Rezept wie in den Illustrator-Grafiken: Struktur in Grau, darüber der
+   Tint-Layer in multiply 100%. isolation hält den Blend lokal.
+   Die Werte (--illu-structure, --illu-tint, --paper-contrast, --dots-opacity,
+   --lines-opacity) setzt der BrandProvider aus brands/<marke>/tokens.ts.
    ----------------------------------------------------------------------- */
-:root {
-  --illu-structure: #ffffff; /* helle Grundfläche, auf der die Graustruktur liegt */
-  --illu-tint: #0b1316; /* Multiply-Layer 100% darüber (dunkler River-Ton) */
-  --paper-contrast: 1.3; /* Knick-Kontrast der Papierstruktur */
-  --dots-opacity: 1; /* Gesamtstärke Punkte (Detailwerte in lib/dotPattern.ts) */
-  --lines-opacity: 1; /* Gesamtstärke Linien (Detailwerte in lib/linePattern.ts) */
-}
-/* ===================================================================== */
 
 .illu-bg {
   position: absolute;

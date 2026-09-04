@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
-import type { Dimension } from "../lib/dimensions";
-import type { LogoCorner, LogoSize } from "../lib/logos";
-import { LOGO_WIDTH } from "../lib/config";
+import type { Dimension } from "../core/canvas/dimension";
+import type { LogoCorner, LogoSize } from "../core/doc/logo";
+import { useBrand } from "../brand/context";
 
 // Logo-Sticker: snappt unten in die Safety-Zone (links/mittig/rechts), feste
 // Größen, nicht ziehbar (pointer-events: none — blockiert keine Drags darunter).
@@ -14,9 +14,10 @@ type Props = {
 };
 
 export function LogoLayer({ url, corner, size, dimension }: Props) {
+  const brand = useBrand();
   const safe = dimension.safe;
   const style: CSSProperties = {
-    width: dimension.width * LOGO_WIDTH[size],
+    width: dimension.width * brand.logo.widths[size],
     bottom: `${safe.bottom * 100}%`,
   };
   if (corner === "bl") style.left = `${safe.left * 100}%`;

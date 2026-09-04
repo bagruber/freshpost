@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
-import type { Dimension } from "../lib/dimensions";
+import type { Dimension } from "../core/canvas/dimension";
 import type { Slide } from "./model";
-import { SURFACE_HEX, TYPE, fs } from "./model";
+import { TYPE, fs } from "./model";
+import { useBrand } from "../brand/context";
 import { Header, BodyText, Attribution } from "./layouts/parts";
 import { RoughImage } from "./RoughImage";
 
@@ -10,6 +11,18 @@ import { RoughImage } from "./RoughImage";
 // Bilder von Diagonale/Randspalte. Alle nutzen dieselbe Typo-Skala (parts.tsx).
 
 type OnImgDown = (e: React.PointerEvent, bx: number, by: number) => void;
+
+// Flaechenton aus dem Marken-Paket; unbekannter Schluessel faellt auf den
+// ersten Ton zurueck (Entwurf aus einer anderen Marke).
+function useTone(key: string): string {
+  const tones = useBrand().surface.tones;
+  return (tones.find((t) => t.key === key) ?? tones[0]).hex;
+}
+
+// Rahmenfarbe der rauen Kante — erste Rahmenfarbe der Marke.
+function useFrameColor(): string {
+  return useBrand().image.frameColors[0].hex;
+}
 
 type LProps = {
   slide: Slide;
@@ -60,6 +73,8 @@ function Overlay({ slide, dimension, headerMin }: LProps) {
 
 function Diagonal(props: LProps) {
   const { slide, dimension, headerMin } = props;
+  const tone = useTone(slide.surface);
+  const frame = useFrameColor();
   const img = slide.images[0];
   return (
     <div className="cx-fg cx-diagonal">
@@ -67,7 +82,7 @@ function Diagonal(props: LProps) {
         {img &&
           (slide.imageRough ? (
             <ImgZone {...props} className="cx-diag-rough">
-              <RoughImage items={[{ url: img.url, scale: img.scale }]} thickness={fs(dimension, 0.012)} rough={fs(dimension, 0.01)} />
+              <RoughImage items={[{ url: img.url, scale: img.scale }]} frameColor={frame} thickness={fs(dimension, 0.012)} rough={fs(dimension, 0.01)} />
             </ImgZone>
           ) : (
             <ImgZone {...props} className="cx-diag-coverzone">
@@ -75,7 +90,7 @@ function Diagonal(props: LProps) {
             </ImgZone>
           ))}
       </div>
-      <div className="cx-diag-surface" style={{ background: SURFACE_HEX[slide.surface] }} />
+      <div className="cx-diag-surface" style={{ background: tone }} />
       <div className="cx-diag-content">
         <Header slide={slide} dimension={dimension} minHeight={headerMin} />
         <BodyText text={slide.body} dimension={dimension} />
@@ -86,11 +101,13 @@ function Diagonal(props: LProps) {
 
 function Sidebar(props: LProps) {
   const { slide, dimension, headerMin } = props;
+  const tone = useTone(slide.surface);
+  const frame = useFrameColor();
   const hasQuote = slide.attribution.trim().length > 0;
   const items = slide.images.map((im) => ({ url: im.url, scale: im.scale }));
   return (
     <div className="cx-fg cx-sidebar">
-      <div className="cx-side-col" style={{ background: SURFACE_HEX[slide.surface] }}>
+      <div className="cx-side-col" style={{ background: tone }}>
         {hasQuote && <span className="cx-quote-mark" style={{ fontSize: fs(dimension, TYPE.heading * 1.6) }}>„</span>}
         <Header slide={slide} dimension={dimension} minHeight={headerMin} />
         {hasQuote ? (
@@ -102,7 +119,7 @@ function Sidebar(props: LProps) {
       </div>
       {items.length > 0 && (
         <ImgZone {...props} className="cx-side-img">
-          <RoughImage items={items} thickness={fs(dimension, 0.012)} rough={fs(dimension, 0.01)} />
+          <RoughImage items={items} frameColor={frame} thickness={fs(dimension, 0.012)} rough={fs(dimension, 0.01)} />
         </ImgZone>
       )}
     </div>

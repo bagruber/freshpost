@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Dimension } from "../lib/dimensions";
+import type { Dimension } from "../core/canvas/dimension";
 import type { CarouselDoc, Layer, TextureMode } from "./model";
 import { TEXTURES, TEXTURE_SPAN } from "./model";
 import { makePaperSheet, makeHalftoneSheet, makeGrain } from "./paperTexture";
@@ -16,7 +16,7 @@ const BLEND: Record<TextureMode, string> = { paper: "multiply", halftone: "multi
 export type Layers = { back: Layer[]; front: Layer[] };
 type Sheet = { key: string; url: string } | null;
 
-export function useLayers(doc: CarouselDoc, dimension: Dimension): Layers {
+export function useLayers(doc: CarouselDoc, dimension: Dimension, sheetUrl: string): Layers {
   const { width, height } = dimension;
   const total = doc.slides.length;
   const texSpan = Math.min(total, TEXTURE_SPAN);
@@ -33,20 +33,20 @@ export function useLayers(doc: CarouselDoc, dimension: Dimension): Layers {
   useEffect(() => {
     if (!wantPaper) return;
     let alive = true;
-    makePaperSheet(texW, height).then((url) => alive && setPaper({ key: texKey, url })).catch(() => {});
+    makePaperSheet(texW, height, sheetUrl).then((url) => alive && setPaper({ key: texKey, url })).catch(() => {});
     return () => {
       alive = false;
     };
-  }, [wantPaper, texW, height, texKey]);
+  }, [wantPaper, texW, height, texKey, sheetUrl]);
 
   useEffect(() => {
     if (!wantHalf) return;
     let alive = true;
-    makeHalftoneSheet(texW, height).then((url) => alive && setHalf({ key: texKey, url })).catch(() => {});
+    makeHalftoneSheet(texW, height, sheetUrl).then((url) => alive && setHalf({ key: texKey, url })).catch(() => {});
     return () => {
       alive = false;
     };
-  }, [wantHalf, texW, height, texKey]);
+  }, [wantHalf, texW, height, texKey, sheetUrl]);
 
   const paperUrl = paper?.key === texKey ? paper.url : null;
   const halfUrl = half?.key === texKey ? half.url : null;

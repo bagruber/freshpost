@@ -1,5 +1,5 @@
 import type { PhotoState } from "../hooks/usePhoto";
-import type { Grade } from "../lib/ciFilter";
+import type { Grade } from "../core/color/grade";
 import { Slider } from "../core/input/controls";
 
 // Foto-spezifische Controls: Standard = ein CI-Look-Regler,

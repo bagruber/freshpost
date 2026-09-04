@@ -1,30 +1,33 @@
 // Leichtgewichtige Auszeichnung im Fließtext, damit einzelne Wörter einen
 // Marker (farbige Box hinter dem Text) bekommen — ohne Rich-Text-Editor:
-//   *Wort*  → Rose-Marker
-//   ~Wort~  → Wind-Marker
-//   _Wort_  → Weiß-Marker
+//   *Wort*  → Marker-Slot 0
+//   ~Wort~  → Marker-Slot 1
+//   _Wort_  → Marker-Slot 2
 // Zeilenumbrüche trennen Absätze.
+//
+// Der Parser kennt keine Farben, nur Slots. Welche Farbe ein Slot bekommt,
+// sagt die Marke (brand.colors.markSlots) — sonst stecken drei Markennamen
+// in einem Textparser.
 
-export type MarkKind = "none" | "rose" | "wind" | "white";
-export type Run = { text: string; mark: MarkKind };
+export type Run = { text: string; slot: number | null };
 export type Paragraph = Run[];
 
 const TOKEN = /(\*[^*\n]+\*|~[^~\n]+~|_[^_\n]+_)/g;
 
-const KIND: Record<string, MarkKind> = { "*": "rose", "~": "wind", _: "white" };
+const SLOT: Record<string, number> = { "*": 0, "~": 1, _: 2 };
 
 function parseLine(line: string): Run[] {
   const runs: Run[] = [];
   let last = 0;
   for (const m of line.matchAll(TOKEN)) {
     const idx = m.index ?? 0;
-    if (idx > last) runs.push({ text: line.slice(last, idx), mark: "none" });
+    if (idx > last) runs.push({ text: line.slice(last, idx), slot: null });
     const tok = m[0];
     const inner = tok.slice(1, -1);
-    runs.push({ text: inner, mark: KIND[tok[0]] });
+    runs.push({ text: inner, slot: SLOT[tok[0]] });
     last = idx + tok.length;
   }
-  if (last < line.length) runs.push({ text: line.slice(last), mark: "none" });
+  if (last < line.length) runs.push({ text: line.slice(last), slot: null });
   return runs;
 }
 

@@ -4,21 +4,30 @@
 // gedeckelter Auflösung gezeichnet und per background-size UNIFORM wieder
 // hochskaliert (gleiches Seitenverhältnis → Halbton-Punkte bleiben rund).
 
-import paperRaw from "../assets/glued-paper-with-wet-transparent-wrinkled-effect-gray-background-white-wet-paper-poster-template-with-crumpled-texture-realistic-posters_119445-273.avif";
+//
+// Die Papierquelle kommt aus dem Marken-Paket (brand.surface.sheetUrl) und
+// wird je URL genau einmal dekodiert.
 
 const MAX_W = 1800;
 
-let imgPromise: Promise<HTMLImageElement> | null = null;
-function loadPaper(): Promise<HTMLImageElement> {
-  if (!imgPromise) {
-    imgPromise = (async () => {
+// Halbton-Punkte werden in Grau gezeichnet und erst vom Tint der Marke
+// eingefaerbt (multiply). Deshalb steht der Wert hier und nicht im
+// Marken-Paket: er ist Teil des Verfahrens, nicht der Marke.
+const HALFTONE_GREY = "#565d64";
+
+const imgCache = new Map<string, Promise<HTMLImageElement>>();
+function loadPaper(src: string): Promise<HTMLImageElement> {
+  let p = imgCache.get(src);
+  if (!p) {
+    p = (async () => {
       const img = new Image();
-      img.src = paperRaw;
+      img.src = src;
       await img.decode();
       return img;
     })();
+    imgCache.set(src, p);
   }
-  return imgPromise;
+  return p;
 }
 
 // Paper „cover" in eine w×h-Leinwand zeichnen (ohne Verzerrung, nur beschnitten).
@@ -39,12 +48,12 @@ function workSize(spanW: number, height: number): { w: number; h: number } {
 }
 
 // Geklebtes Papier als Blatt (spanW × height).
-export function makePaperSheet(spanW: number, height: number): Promise<string> {
+export function makePaperSheet(spanW: number, height: number, src: string): Promise<string> {
   const key = `${spanW}x${height}`;
   const hit = paperCache.get(key);
   if (hit) return hit;
   const p = (async () => {
-    const img = await loadPaper();
+    const img = await loadPaper(src);
     const { w, h } = workSize(spanW, height);
     const canvas = document.createElement("canvas");
     canvas.width = w;
@@ -62,12 +71,12 @@ export function makePaperSheet(spanW: number, height: number): Promise<string> {
 }
 
 // Halbton des Papiers als Blatt: feines Raster, Punktradius ∝ Dunkelheit.
-export function makeHalftoneSheet(spanW: number, height: number): Promise<string> {
+export function makeHalftoneSheet(spanW: number, height: number, src: string): Promise<string> {
   const key = `${spanW}x${height}`;
   const hit = halftoneCache.get(key);
   if (hit) return hit;
   const p = (async () => {
-    const img = await loadPaper();
+    const img = await loadPaper(src);
     const { w, h } = workSize(spanW, height);
 
     const sample = document.createElement("canvas");
@@ -83,7 +92,7 @@ export function makeHalftoneSheet(spanW: number, height: number): Promise<string
     const ctx = out.getContext("2d")!;
     const cell = 4; // fein → wirkt wie geklebtes Papier
     const maxR = cell * 0.66;
-    ctx.fillStyle = "#565d64";
+    ctx.fillStyle = HALFTONE_GREY;
     for (let y = 0; y < h; y += cell) {
       for (let x = 0; x < w; x += cell) {
         const i = (y * w + x) * 4;

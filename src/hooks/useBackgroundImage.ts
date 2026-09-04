@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { filterToDataUrl, type Grade } from "../lib/ciFilter";
-import { coverGeom, clampView, type CoverGeom, type Pos } from "../lib/geometry";
-import type { Dimension } from "../lib/dimensions";
-import type { LoadedImage } from "../lib/image";
+import { filterToDataUrl, type Grade } from "../core/color/grade";
+import { coverGeom, clampView, type CoverGeom, type Pos } from "../core/canvas/geometry";
+import type { Dimension } from "../core/canvas/dimension";
+import type { LoadedImage } from "../core/media/image";
 
 // Hintergrund-Pipeline: Originale als ImageData in Refs, angezeigt wird die
 // gefilterte Vorschau (klein) als Data-URL. Pan/Zoom wie bei einer Karte —

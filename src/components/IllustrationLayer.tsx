@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
-import type { Dimension } from "../lib/dimensions";
-import { useDrag } from "../hooks/useDrag";
+import type { Dimension } from "../core/canvas/dimension";
+import { useDrag } from "../core/input/useDrag";
 
 // Ziehbare Illustration in einem Container mit Sticker-artigem Schatten.
 // Position als Bruchteil der Stage, Breite als Bruchteil der Stage-Breite.

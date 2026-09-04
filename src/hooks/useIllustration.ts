@@ -1,13 +1,16 @@
 import { useCallback, useMemo, useState } from "react";
-import { extents, clampToCanvas, type Size, type Pos } from "../lib/geometry";
-import type { Dimension } from "../lib/dimensions";
-import { loadIllustration, illuSrc, type Illu } from "../lib/illustration";
-import { DEFAULTS } from "../lib/config";
+import { extents, clampToCanvas, type Size, type Pos } from "../core/canvas/geometry";
+import type { Dimension } from "../core/canvas/dimension";
+import { loadIllustration, illuSrc, type Illu } from "../core/media/illustration";
+import { snapColor } from "../core/color/snap";
+import { useBrand } from "../brand/context";
+import { DEFAULTS } from "../core/config";
 
 // Kompletter Illustrations-Modus-Zustand: SVG/PNG, umschaltbares CI-Recolor,
 // Drag/Clamp und Measure-Dedupe.
 
 export function useIllustration(dimension: Dimension) {
+  const snap = useBrand().image.colorSnap;
   const [item, setItem] = useState<Illu | null>(null);
   const [recolor, setRecolor] = useState(true);
   const [size, setSize] = useState<Size>({ w: 0, h: 0 });
@@ -18,7 +21,10 @@ export function useIllustration(dimension: Dimension) {
     setItem({ ...loaded, x: 0.5, y: 0.5, scale: DEFAULTS.illuScale });
   };
 
-  const displaySrc = useMemo(() => (item ? illuSrc(item, recolor) : null), [item, recolor]);
+  const displaySrc = useMemo(
+    () => (item ? illuSrc(item, recolor, (rgb) => snapColor(rgb, snap)) : null),
+    [item, recolor, snap],
+  );
 
   const ext = useMemo(() => extents(size, 0, dimension), [size, dimension]);
   const onDrag = (raw: Pos) => {

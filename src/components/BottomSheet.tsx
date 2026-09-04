@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { usePointerDrag } from "../hooks/usePointerDrag";
+import { usePointerDrag } from "../core/input/usePointerDrag";
 
 // Mobile: Controls als Bottom-Sheet, das größtenteils verborgen ist und per
 // Griff hoch-/runtergezogen (oder getippt) wird. Auf Desktop (kein Sheet)

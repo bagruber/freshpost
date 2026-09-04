@@ -1,4 +1,4 @@
-import type { Dimension } from "../lib/dimensions";
+import type { Dimension } from "../core/canvas/dimension";
 
 // Kleine Swipe-Leiste: pro Slide ein nach rechts zeigendes Dreieck. Der aktuelle
 // Slide ist deutlich größer und in Rose; bereits gewischte sind kräftig (River

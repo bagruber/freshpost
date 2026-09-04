@@ -1,14 +1,14 @@
 import { useMemo } from "react";
 import { BackgroundLayer } from "./BackgroundLayer";
-import type { Mode, BgPattern } from "../lib/types";
-import type { Dimension } from "../lib/dimensions";
+import type { Mode, BgPattern } from "../core/doc/claim";
+import type { Dimension } from "../core/canvas/dimension";
 import type { PhotoState } from "../hooks/usePhoto";
-import { generateDotPattern } from "../lib/dotPattern";
-import { generateLinePattern } from "../lib/linePattern";
-import paperUrl from "../assets/paper.jpg";
+import { generateDotPattern } from "../core/canvas/patterns/dots";
+import { generateLinePattern } from "../core/canvas/patterns/lines";
+import { useBrand } from "../brand/context";
 
 // Mode-abhängiger Stage-Hintergrund. Foto: pan/zoombarer BackgroundLayer.
-// Illustration/Person: das BG-Rezept „Struktur in Grau + #0b1316-Multiply" —
+// Illustration/Person: das BG-Rezept „Struktur in Grau + Marken-Tint als Multiply" —
 // .illu-bg (heller Base, isolation) + Muster-Layer in Grau + .bg-tint
 // (multiply) als letztes Kind. Foreground liegt außerhalb → unbeeinflusst.
 
@@ -21,6 +21,7 @@ type Props = {
 };
 
 export function CanvasBackground({ mode, bgPattern, dimension, photo, stageRef }: Props) {
+  const brand = useBrand();
   const patternUrl = useMemo(() => {
     if (mode === "photo") return null;
     if (bgPattern === "dots") return generateDotPattern(dimension.width, dimension.height);
@@ -32,7 +33,7 @@ export function CanvasBackground({ mode, bgPattern, dimension, photo, stageRef }
     return (
       <div className="illu-bg">
         {bgPattern === "paper" && (
-          <div className="bg-paper" style={{ backgroundImage: `url(${paperUrl})` }} />
+          <div className="bg-paper" style={{ backgroundImage: `url(${brand.surface.paperUrl})` }} />
         )}
         {bgPattern === "dots" && patternUrl && (
           <div className="bg-dots" style={{ backgroundImage: `url(${patternUrl})` }} />

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, type CSSProperties, type RefObject } from "react";
-import type { CoverGeom, Pos } from "../lib/geometry";
-import type { Dimension } from "../lib/dimensions";
+import type { CoverGeom, Pos } from "../core/canvas/geometry";
+import type { Dimension } from "../core/canvas/dimension";
 
 // Hintergrundbild als „Karte": 1 Finger / Maus = Pan, 2 Finger = Pinch-Zoom,
 // Mausrad = Zoom um den Cursor. Grenzen (Cover … 1:1) macht der Aufrufer/Hook.

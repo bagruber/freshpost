@@ -1,44 +1,47 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { getDimension } from "../lib/dimensions";
-import { renderStageToJpg, downloadBlob } from "../lib/exportImage";
-import { ACCEPTED_TYPES } from "../lib/image";
+import { getDimension } from "../core/canvas/dimension";
+import { renderStageToJpg, downloadBlob } from "../core/canvas/exportImage";
+import { ACCEPTED_TYPES } from "../core/media/image";
 import { MAX_FILE_BYTES, readDataUrl } from "../core/media/readFile";
 import { Scaled } from "../core/canvas/Scaled";
 import { BusyOverlay, CUTOUT_BUSY } from "../core/ui/BusyOverlay";
-import { getLogo } from "../lib/logos";
-import { removePersonBackground } from "../lib/removeBg";
+
+import { removePersonBackground } from "../core/media/removeBg";
 import { CarouselControls } from "./CarouselControls";
 import { Filmstrip } from "./Filmstrip";
 import { SlideView, type RenderTheme } from "./SlideView";
 import { HeaderMeasurer, type HeaderHeights } from "./HeaderMeasurer";
 import { useLayers } from "./useLayers";
 import { loadDoc, saveDoc } from "./carouselDraft";
-import { GRADIENTS, MAX_SLIDES, maxImages, makeSlide, type CarouselDoc, type LayoutType, type Slide } from "./model";
+import { MAX_SLIDES, maxImages, makeSlide, type CarouselDoc, type LayoutType, type Slide } from "./model";
+import { useBrand } from "../brand/context";
 
 const raf = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
 const ZERO_HEIGHTS: HeaderHeights = { typo: 0, diagonal: 0, sidebar: 0, overlay: 0 };
 
-const initialDoc = loadDoc();
-
 export function CarouselApp() {
-  const [doc, setDoc] = useState<CarouselDoc>(initialDoc);
-  const [selectedId, setSelectedId] = useState(initialDoc.slides[0].id);
+  const brand = useBrand();
+  const [doc, setDoc] = useState<CarouselDoc>(() => loadDoc(brand));
+  const [selectedId, setSelectedId] = useState(() => doc.slides[0].id);
   const [exporting, setExporting] = useState(false);
   const [busy, setBusy] = useState(false); // Freistellen läuft
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [fontsReady, setFontsReady] = useState(false);
   const [headerMins, setHeaderMins] = useState<HeaderHeights>(ZERO_HEIGHTS);
 
-  const dimension = getDimension(doc.dimensionKey);
+  const dimension = getDimension(brand.formats, doc.dimensionKey);
   const total = doc.slides.length;
 
   const gradientCss = useMemo(
-    () => GRADIENTS.find((g) => g.key === doc.gradient)?.css ?? GRADIENTS[0].css,
-    [doc.gradient],
+    () => {
+      const gs = brand.surface.gradients;
+      return (gs.find((g) => g.key === doc.gradient) ?? gs[0]).css;
+    },
+    [doc.gradient, brand],
   );
-  const layers = useLayers(doc, dimension);
-  const logoUrl = getLogo(doc.logo)?.url ?? null;
+  const layers = useLayers(doc, dimension, brand.surface.sheetUrl);
+  const logoUrl = brand.logo.options.find((o) => o.key === doc.logo)?.url ?? null;
 
   const theme: RenderTheme = useMemo(
     () => ({
@@ -79,7 +82,8 @@ export function CarouselApp() {
 
   const addSlide = (layout?: LayoutType) => {
     if (doc.slides.length >= MAX_SLIDES) return;
-    const ns = makeSlide(layout ?? "typo");
+    const main = brand.colors.order[0];
+    const ns = makeSlide(layout ?? "typo", brand.surface.tones[0].key, main, brand.colors.secondaryFor(main));
     setDoc((d) => ({ ...d, slides: [...d.slides, ns] }));
     setSelectedId(ns.id);
   };
@@ -163,8 +167,8 @@ export function CarouselApp() {
         await raf();
         await raf();
         const el = host.firstElementChild as HTMLElement;
-        const blob = await renderStageToJpg(el, dimension.width, dimension.height);
-        downloadBlob(blob, `freshpost-${dimension.key}-${String(i + 1).padStart(2, "0")}.jpg`);
+        const blob = await renderStageToJpg(el, dimension.width, dimension.height, brand.colors.exportBackground);
+        downloadBlob(blob, `${brand.id}-${dimension.key}-${String(i + 1).padStart(2, "0")}.jpg`);
       }
     } finally {
       root.unmount();

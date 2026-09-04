@@ -4,7 +4,8 @@
 // Struktur + Textur, Logo, Format). Jeder Slide hat einen Layout-Typ und wenig
 // Inhalt.
 
-import type { Dimension } from "../lib/dimensions";
+import type { Dimension } from "../core/canvas/dimension";
+import type { PaletteKey, Brand } from "../brand/contract";
 
 export const MAX_SLIDES = 8;
 
@@ -32,58 +33,21 @@ export function maxImages(layout: LayoutType): number {
 }
 
 // --- Sticker-/Textfarben -----------------------------------------------------
-export type StickerColor = "rose" | "wind" | "river" | "white";
-export const STICKER_COLORS: StickerColor[] = ["rose", "wind", "river", "white"];
-export const STICKER_BG: Record<StickerColor, string> = {
-  rose: "var(--fresh-rose)",
-  wind: "var(--fresh-wind)",
-  river: "var(--fresh-river)",
-  white: "#ffffff",
-};
-export const STICKER_TEXT: Record<StickerColor, string> = {
-  rose: "#ffffff",
-  wind: "#ffffff",
-  river: "#ffffff",
-  white: "var(--fresh-dark-d)",
-};
-// Farbe für nicht-gesticker­ten (flush) Text.
-export const FLUSH_TEXT: Record<StickerColor, string> = {
-  rose: "var(--fresh-rose)",
-  wind: "var(--fresh-wind)",
-  river: "var(--fresh-river-soft)",
-  white: "#eef3f4",
-};
-export const STICKER_SWATCH: { value: StickerColor; label: string; color: string }[] = [
-  { value: "rose", label: "Rose", color: "var(--fresh-rose)" },
-  { value: "wind", label: "Wind", color: "var(--fresh-wind)" },
-  { value: "river", label: "River", color: "var(--fresh-river)" },
-  { value: "white", label: "Weiß", color: "#ffffff" },
-];
+// Nur noch Schluessel in die Palette der Marke — die Werte stehen in
+// brands/<marke>/. Frueher lag hier eine zweite, abweichende Farbtabelle.
+export type StickerColor = PaletteKey;
 
 // --- Bild --------------------------------------------------------------------
 export type ImageMode = "normal" | "duotone";
 export type SlideImage = { url: string; name: string; scale: number };
 
-// --- Oberflächen-Ton (Textflächen; nie Weiß) --------------------------------
-export type SurfaceTone = "deep" | "mid" | "soft";
-export const SURFACE_HEX: Record<SurfaceTone, string> = {
-  deep: "#0c1c23",
-  mid: "#173743",
-  soft: "#295260",
-};
-export const SURFACE_LABEL: Record<SurfaceTone, string> = {
-  deep: "River dunkel",
-  mid: "River",
-  soft: "River hell",
-};
+// --- Flaechen-Ton (Textflaechen; nie Weiss) ---------------------------------
+// Schluessel in brand.surface.tones.
+export type SurfaceTone = string;
 
-// --- Durchlaufender Verlauf (sehr dunkle River-Shades) ----------------------
-export const GRADIENTS = [
-  { key: "night", label: "Nacht", css: "linear-gradient(104deg, #030506 0%, #0b1c23 50%, #04080a 100%)" },
-  { key: "deep", label: "Tiefsee", css: "linear-gradient(104deg, #020506 0%, #0a1e26 46%, #0a222a 76%, #020405 100%)" },
-  { key: "ember", label: "Rose-Hauch", css: "linear-gradient(104deg, #040607 0%, #16070f 48%, #071319 100%)" },
-] as const;
-export type GradientKey = (typeof GRADIENTS)[number]["key"];
+// --- Durchlaufender Verlauf -------------------------------------------------
+// Schluessel in brand.surface.gradients.
+export type GradientKey = string;
 
 // --- Textur (je Art getrennt für hinten/vorne regelbar) ----------------------
 // Papier/Halbton laufen als „Blatt" über je TEXTURE_SPAN Slides; Körnung kachelt.
@@ -137,20 +101,20 @@ let seq = 0;
 const genId = () => `s${Date.now().toString(36)}${(seq++).toString(36)}`;
 export const randomTilt = () => Math.round((Math.random() * 2 - 1) * 5 * 10) / 10; // ±5°
 
-export function makeSlide(layout: LayoutType = "typo"): Slide {
+export function makeSlide(layout: LayoutType, surface: string, main: PaletteKey, secondary: PaletteKey): Slide {
   return {
     id: genId(),
     layout,
     kicker: "",
-    kickerColor: "rose",
+    kickerColor: main,
     kickerSticker: false,
     heading: "",
-    headingColor: "white",
+    headingColor: secondary,
     headingSticker: false,
     tilt: randomTilt(),
     body: "",
     attribution: "",
-    surface: "mid",
+    surface,
     images: [],
     imageMode: layout === "overlay" ? "duotone" : "normal",
     imageRough: false,
@@ -159,10 +123,13 @@ export function makeSlide(layout: LayoutType = "typo"): Slide {
   };
 }
 
-export function defaultDoc(): CarouselDoc {
+// Startwerte fuer eine neue Folge. Verlauf und Flaechenton kommen aus dem
+// Marken-Paket — eine andere Marke hat andere Schluessel.
+export function defaultDoc(brand: Brand): CarouselDoc {
+  const main = brand.colors.order[0];
   return {
-    slides: [makeSlide("typo")],
-    gradient: "night",
+    slides: [makeSlide("typo", brand.surface.tones[0].key, main, brand.colors.secondaryFor(main))],
+    gradient: brand.surface.gradients[0].key,
     texBack: { paper: 24, halftone: 42, grain: 0 },
     texFront: zeroTex(),
     logo: null,

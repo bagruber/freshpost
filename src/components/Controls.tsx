@@ -1,22 +1,24 @@
-import type { Claim, StickerStyle, Mode, BgPattern } from "../lib/types";
-import { STYLES, STYLE_BG, SEC_MAX, boundaryOk, secondaryStyle } from "../lib/types";
-import { SLIDER } from "../lib/config";
-import { DIMENSIONS, type Dimension } from "../lib/dimensions";
-import { ACCEPTED_TYPES } from "../lib/image";
-import { ILLU_TYPES } from "../lib/illustration";
-import { PERSON_TYPES } from "../lib/personImage";
-import { LOGOS, LOGO_SIZES, type LogoState, type LogoCorner, type LogoSize } from "../lib/logos";
+import type { Claim, Mode, BgPattern } from "../core/doc/claim";
+import type { PaletteKey } from "../brand/contract";
+import { SLIDER } from "../core/config";
+import type { Dimension } from "../core/canvas/dimension";
+import { ACCEPTED_TYPES } from "../core/media/image";
+import { ILLU_TYPES } from "../core/media/illustration";
+import { PERSON_TYPES } from "../core/media/personImage";
+import { LOGO_SIZES, type LogoState, type LogoCorner, type LogoSize } from "../core/doc/logo";
 import type { PhotoState } from "../hooks/usePhoto";
 import type { IllustrationState } from "../hooks/useIllustration";
 import type { PersonState } from "../hooks/usePerson";
 import { PhotoControls, PhotoAdvancedControls } from "./PhotoControls";
 import { IllustrationControls, IllustrationAdvancedControls } from "./IllustrationControls";
 import { PersonControls, PersonAdvancedControls } from "./PersonControls";
-import { Slider, Toggle, Swatches, FileButton, type SwatchItem } from "../core/input/controls";
-import paperUrl from "../assets/paper.jpg";
+import { Slider, Toggle, Swatches, Segmented, Tiles, FileButton, type SwatchItem, type TileItem } from "../core/input/controls";
+import { useBrand } from "../brand/context";
 
 // Gemeinsames Bedien-UI (Mode, Claim, Format, Upload, Advanced-Claim-Regler);
 // mode-spezifische Teile liegen in Photo-/Illustration-/PersonControls.
+// Farben, erlaubte Kombinationen, Formate und Logos kommen aus dem
+// Marken-Paket — hier steht kein einziger Farbwert.
 
 type Props = {
   claim: Claim;
@@ -62,29 +64,15 @@ const MODE_OPTIONS: { value: Mode; label: string }[] = [
   { value: "person", label: "Person" },
 ];
 
-const PATTERN_OPTIONS: { value: BgPattern; label: string }[] = [
-  { value: "paper", label: "Papier" },
-  { value: "dots", label: "Punkte" },
-  { value: "lines", label: "Linien" },
-  { value: "none", label: "Keins" },
-];
+const PATTERNS: BgPattern[] = ["paper", "dots", "lines", "none"];
+const PATTERN_LABEL: Record<BgPattern, string> = {
+  paper: "Papier",
+  dots: "Punkte",
+  lines: "Linien",
+  none: "Keins",
+};
 
-const CORNER_OPTIONS: { value: LogoCorner; label: string }[] = [
-  { value: "bl", label: "↙" },
-  { value: "bc", label: "↓" },
-  { value: "br", label: "↘" },
-];
 const LOGO_SIZE_LABEL: Record<LogoSize, string> = { s: "Klein", m: "Mittel" };
-
-// Sticker-Farben als Chip-Reihe; verbotene Kombinationen ausgegraut.
-function styleItems(isAllowed: (s: StickerStyle) => boolean): SwatchItem<StickerStyle>[] {
-  return STYLES.map((s) => ({
-    value: s.value,
-    label: s.label,
-    color: STYLE_BG[s.value],
-    disabled: !isAllowed(s.value),
-  }));
-}
 
 export function Controls(props: Props) {
   const {
@@ -92,6 +80,7 @@ export function Controls(props: Props) {
     onMode, onBgPattern, onClaim, onDimension, onFile, onAdvanced, onReroll, onRemoveBg,
     logo, onLogo,
   } = props;
+  const brand = useBrand();
   const isPhoto = mode === "photo";
   const isIllu = mode === "illustration";
   const isPerson = mode === "person";
@@ -103,57 +92,47 @@ export function Controls(props: Props) {
   const hasContent = isPhoto ? photo.hasBackground : isIllu ? illu.item != null : person.item != null;
   const onClear = isPhoto ? photo.clear : isIllu ? illu.clear : person.clear;
 
-  const setMainStyle = (s: StickerStyle) => {
+  // Sticker-Farben als Chip-Reihe; was die Marke verbietet, kommt ausgegraut.
+  const styleItems = (isAllowed: (s: PaletteKey) => boolean): SwatchItem<PaletteKey>[] =>
+    brand.colors.order.map((key) => ({
+      value: key,
+      label: brand.palette[key].label,
+      color: brand.palette[key].bg,
+      disabled: !isAllowed(key),
+    }));
+
+  const setMainStyle = (s: PaletteKey) => {
     const patch: Partial<Claim> = { mainStyle: s };
-    if (hasUpper && !boundaryOk(claim.upperStyle, s)) patch.upperStyle = secondaryStyle(s);
-    if (hasLower && !boundaryOk(claim.lowerStyle, s)) patch.lowerStyle = secondaryStyle(s);
+    if (hasUpper && !brand.colors.adjacent(claim.upperStyle, s)) patch.upperStyle = brand.colors.secondaryFor(s);
+    if (hasLower && !brand.colors.adjacent(claim.lowerStyle, s)) patch.lowerStyle = brand.colors.secondaryFor(s);
     onClaim(patch);
   };
+
+  const patternItems: TileItem<BgPattern>[] = PATTERNS.map((p) => ({
+    value: p,
+    label: PATTERN_LABEL[p],
+    previewClass: `tile-${p}`,
+    previewStyle: p === "paper" ? { backgroundImage: `url(${brand.surface.paperUrl})` } : undefined,
+  }));
+
+  const logoItems: TileItem<string>[] = [
+    { value: "", label: "Keins", previewClass: "tile-none" },
+    ...brand.logo.options.map((l) => ({
+      value: l.key,
+      label: l.label,
+      previewClass: "tile-logo",
+      previewNode: <img src={l.url} alt="" />,
+    })),
+  ];
 
   return (
     <aside className="controls">
       <h1 className="controls-title">freshpost</h1>
 
-      <div className="field" role="radiogroup" aria-label="Modus">
-        <span>Modus</span>
-        <div className="mode-toggle">
-          {MODE_OPTIONS.map((o) => (
-            <button
-              key={o.value}
-              type="button"
-              role="radio"
-              aria-checked={mode === o.value}
-              className={mode === o.value ? "active" : ""}
-              onClick={() => onMode(o.value)}
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <Segmented ariaLabel="Modus" label="Modus" value={mode} options={MODE_OPTIONS} onChange={onMode} />
 
       {!isPhoto && (
-        <div className="field" role="radiogroup" aria-label="Hintergrund">
-          <span>Hintergrund</span>
-          <div className="tile-row">
-            {PATTERN_OPTIONS.map((o) => (
-              <button
-                key={o.value}
-                type="button"
-                role="radio"
-                aria-checked={bgPattern === o.value}
-                className={`tile${bgPattern === o.value ? " active" : ""}`}
-                onClick={() => onBgPattern(o.value)}
-              >
-                <span
-                  className={`tile-preview tile-${o.value}`}
-                  style={o.value === "paper" ? { backgroundImage: `url(${paperUrl})` } : undefined}
-                />
-                <span className="tile-label">{o.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+        <Tiles label="Hintergrund" items={patternItems} value={bgPattern} onChange={onBgPattern} />
       )}
 
       <label className="field">
@@ -177,75 +156,38 @@ export function Controls(props: Props) {
       <label className="field">
         <span>Format</span>
         <select value={dimension.key} onChange={(e) => onDimension(e.target.value)}>
-          {DIMENSIONS.map((d) => (
+          {brand.formats.map((d) => (
             <option key={d.key} value={d.key}>{d.label}</option>
           ))}
         </select>
       </label>
 
-      {LOGOS.length > 0 && (
-        <div className="field" role="radiogroup" aria-label="Logo">
-          <span>Logo</span>
-          <div className="tile-row">
-            <button
-              type="button"
-              role="radio"
-              aria-checked={logo.key == null}
-              className={`tile${logo.key == null ? " active" : ""}`}
-              onClick={() => onLogo({ key: null })}
-            >
-              <span className="tile-preview tile-none" />
-              <span className="tile-label">Keins</span>
-            </button>
-            {LOGOS.map((l) => (
-              <button
-                key={l.key}
-                type="button"
-                role="radio"
-                aria-checked={logo.key === l.key}
-                className={`tile${logo.key === l.key ? " active" : ""}`}
-                onClick={() => onLogo({ key: l.key })}
-              >
-                <span className="tile-preview tile-logo">
-                  <img src={l.url} alt="" />
-                </span>
-                <span className="tile-label">{l.label}</span>
-              </button>
-            ))}
-          </div>
+      {brand.logo.options.length > 0 && (
+        <>
+          <Tiles label="Logo" items={logoItems} value={logo.key ?? ""}
+            onChange={(k) => onLogo({ key: k === "" ? null : k })} />
           {logo.key != null && (
             <div className="logo-opts">
               <div className="corner-grid" role="radiogroup" aria-label="Logo-Ecke">
-                {CORNER_OPTIONS.map((c) => (
+                {brand.logo.placements.map((c) => (
                   <button
-                    key={c.value}
+                    key={c.key}
                     type="button"
                     role="radio"
-                    aria-checked={logo.corner === c.value}
-                    className={logo.corner === c.value ? "active" : ""}
-                    onClick={() => onLogo({ corner: c.value })}
+                    aria-checked={logo.corner === c.key}
+                    className={logo.corner === c.key ? "active" : ""}
+                    onClick={() => onLogo({ corner: c.key as LogoCorner })}
                   >
                     {c.label}
                   </button>
                 ))}
               </div>
-              <div className="mode-toggle logo-size" role="radiogroup" aria-label="Logo-Größe">
-                {LOGO_SIZES.map((s) => (
-                  <button
-                    key={s}
-                    type="button"
-                    role="radio"
-                    aria-checked={logo.size === s}
-                    className={logo.size === s ? "active" : ""}
-                    onClick={() => onLogo({ size: s })}
-                  >
-                    {LOGO_SIZE_LABEL[s]}
-                  </button>
-                ))}
-              </div>
+              <Segmented ariaLabel="Logo-Größe" className="logo-size" value={logo.size}
+                options={LOGO_SIZES.map((s) => ({ value: s, label: LOGO_SIZE_LABEL[s] }))}
+                onChange={(s) => onLogo({ size: s })} />
             </div>
           )}
-        </div>
+        </>
       )}
 
       {!advanced && (
@@ -282,7 +224,8 @@ export function Controls(props: Props) {
             onChange={(v) => onClaim({ mainSize: v / 100 })} />
 
           <Slider label={`Oben/Unten-Größe ${Math.round(claim.secScale * 100)}% von Claim`}
-            value={Math.round(claim.secScale * 100)} min={SLIDER.secScaleMin} max={Math.round(SEC_MAX * 100)} step={1}
+            value={Math.round(claim.secScale * 100)} min={SLIDER.secScaleMin}
+            max={Math.round(brand.sticker.secondaryMax * 100)} step={1}
             onChange={(v) => onClaim({ secScale: v / 100 })} />
 
           <Slider label={`Neigung ${claim.tilt.toFixed(1)}°`}
@@ -298,16 +241,17 @@ export function Controls(props: Props) {
 
           {hasUpper && (
             <Swatches label="Farbe Oben" value={claim.upperStyle}
-              items={styleItems((s) => boundaryOk(s, claim.mainStyle))}
+              items={styleItems((s) => brand.colors.adjacent(s, claim.mainStyle))}
               onChange={(s) => onClaim({ upperStyle: s })} />
           )}
           <Swatches label="Farbe Claim" value={claim.mainStyle}
             items={styleItems((s) =>
-              (!hasUpper || boundaryOk(claim.upperStyle, s)) && (!hasLower || boundaryOk(claim.lowerStyle, s)))}
+              (!hasUpper || brand.colors.adjacent(claim.upperStyle, s)) &&
+              (!hasLower || brand.colors.adjacent(claim.lowerStyle, s)))}
             onChange={setMainStyle} />
           {hasLower && (
             <Swatches label="Farbe Unten" value={claim.lowerStyle}
-              items={styleItems((s) => boundaryOk(s, claim.mainStyle))}
+              items={styleItems((s) => brand.colors.adjacent(s, claim.mainStyle))}
               onChange={(s) => onClaim({ lowerStyle: s })} />
           )}
 

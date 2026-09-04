@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { usePointerDrag } from "../hooks/usePointerDrag";
+import { usePointerDrag } from "../core/input/usePointerDrag";
 
 // Drag zum Verschieben eines Bildes/einer Cutout-Gruppe innerhalb eines Slides.
 // Rechnet Pointer-Bewegung über das umschließende .cx-slide (echte Bildschirm-

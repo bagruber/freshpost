@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode, type Ref } from "react";
-import type { Dimension } from "../../lib/dimensions";
+import type { Dimension } from "./dimension";
 
 // Inhalte liegen in echten Export-Pixeln (z. B. 1080×1920) und werden fuer die
 // Anzeige per CSS-Transform heruntergerechnet. So bleibt ein pixelgenaues

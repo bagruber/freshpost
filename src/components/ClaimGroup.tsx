@@ -1,9 +1,9 @@
 import { useLayoutEffect, useRef } from "react";
-import type { Claim } from "../lib/types";
-import { STYLE_BG, STYLE_FG } from "../lib/types";
-import type { Dimension } from "../lib/dimensions";
-import { buildSegments, PAD_X, PAD_Y, LINE_TIGHT, OVERLAP_WITHIN } from "../lib/boxes";
-import { useDrag } from "../hooks/useDrag";
+import type { Claim } from "../core/doc/claim";
+import type { Dimension } from "../core/canvas/dimension";
+import { buildSegments } from "../core/text/boxes";
+import { useDrag } from "../core/input/useDrag";
+import { useBrand } from "../brand/context";
 
 // Stack aus Sektionsboxen (oben / main / unten). Jede Sektion ist eine Box mit
 // durchgehendem Hintergrund; Zeilen darin eng gestapelt. Oben/Unten liegen
@@ -20,11 +20,13 @@ type Props = {
 };
 
 export function ClaimGroup({ claim, mainSize, dimension, stageRef, onDrag, onMeasure }: Props) {
+  const brand = useBrand();
+  const st = brand.sticker;
   const groupRef = useRef<HTMLDivElement>(null);
   const onPointerDown = useDrag(stageRef, onDrag);
 
   const mainPx = mainSize * dimension.width;
-  const segs = buildSegments(claim, claim.secScale);
+  const segs = buildSegments(claim, claim.secScale, st);
 
   useLayoutEffect(() => {
     const el = groupRef.current;
@@ -55,7 +57,7 @@ export function ClaimGroup({ claim, mainSize, dimension, stageRef, onDrag, onMea
             style={{
               fontSize: fontPx,
               fontWeight: seg.weight,
-              lineHeight: LINE_TIGHT,
+              lineHeight: st.lineTight,
               marginTop: i === 0 ? 0 : -fontPx * seg.overlapTop,
               transform: shift ? `translateX(${shift}px)` : undefined,
               textTransform: seg.cap ? "uppercase" : "none",
@@ -67,14 +69,14 @@ export function ClaimGroup({ claim, mainSize, dimension, stageRef, onDrag, onMea
                 key={j}
                 className="claim-line"
                 style={{
-                  color: STYLE_FG[seg.style],
-                  padding: `${PAD_Y}em ${PAD_X}em`,
-                  marginTop: j === 0 ? 0 : `-${OVERLAP_WITHIN}em`,
+                  color: brand.palette[seg.style].on,
+                  padding: `${st.padY}em ${st.padX}em`,
+                  marginTop: j === 0 ? 0 : `-${st.overlapWithin}em`,
                 }}
               >
                 {/* Hintergrund (z0) liegt unter ALLEM Text (z1) der Sektion —
                     so kann keine Box fremden Text verdecken. */}
-                <span className="claim-bg" style={{ background: STYLE_BG[seg.style] }} />
+                <span className="claim-bg" style={{ background: brand.palette[seg.style].bg }} />
                 <span className="claim-fg">{line}</span>
               </div>
             ))}

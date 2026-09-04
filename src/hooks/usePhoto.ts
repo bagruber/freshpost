@@ -1,22 +1,24 @@
 import { useMemo, useState } from "react";
 import { useBackgroundImage } from "./useBackgroundImage";
-import type { Dimension } from "../lib/dimensions";
-import { loadBackgroundImage } from "../lib/image";
-import { GRADE_BASE, scaleGrade, type Grade } from "../lib/ciFilter";
-import { DEFAULTS } from "../lib/config";
+import type { Dimension } from "../core/canvas/dimension";
+import { loadBackgroundImage } from "../core/media/image";
+import { scaleGrade, type Grade } from "../core/color/grade";
+import { useBrand } from "../brand/context";
+import { DEFAULTS } from "../core/config";
 
 // Kompletter Foto-Modus-Zustand: Grade-Regler (Standard: ein CI-Look-Regler,
 // Advanced: Einzelregler) plus die Bild-Pipeline aus useBackgroundImage.
 
 export function usePhoto(advanced: boolean, dimension: Dimension) {
-  const [imgStrength, setImgStrength] = useState(DEFAULTS.imgStrength); // Standard: ein CI-Look-Regler
-  const [gradeAdv, setGradeAdv] = useState<Grade>(() => scaleGrade(GRADE_BASE, DEFAULTS.gradeFactor));
+  const base = useBrand().image.grade;
+  const [imgStrength, setImgStrength] = useState(DEFAULTS.imgStrength); // Standard: ein Look-Regler
+  const [gradeAdv, setGradeAdv] = useState<Grade>(() => scaleGrade(base, DEFAULTS.gradeFactor));
 
   // Effektiver Grade: Advanced nutzt die Einzelregler, Standard skaliert den
   // empfohlenen Look mit dem einen CI-Look-Regler.
   const grade = useMemo<Grade>(
-    () => (advanced ? gradeAdv : scaleGrade(GRADE_BASE, imgStrength / 100)),
-    [advanced, gradeAdv, imgStrength],
+    () => (advanced ? gradeAdv : scaleGrade(base, imgStrength / 100)),
+    [advanced, gradeAdv, imgStrength, base],
   );
 
   const bg = useBackgroundImage(grade, dimension);
@@ -33,7 +35,7 @@ export function usePhoto(advanced: boolean, dimension: Dimension) {
     setImgStrength,
     setGrade: (key: keyof Grade, v: number) => setGradeAdv((g) => ({ ...g, [key]: v })),
     // Beim Wechsel in Advanced die Einzelregler vom Standard-Look übernehmen.
-    adoptStandardLook: () => setGradeAdv(scaleGrade(GRADE_BASE, imgStrength / 100)),
+    adoptStandardLook: () => setGradeAdv(scaleGrade(base, imgStrength / 100)),
     load,
     clear: () => bg.setImage(null),
   };

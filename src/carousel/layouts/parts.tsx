@@ -1,8 +1,9 @@
 import type { CSSProperties } from "react";
-import type { Dimension } from "../../lib/dimensions";
+import type { Dimension } from "../../core/canvas/dimension";
 import type { Slide } from "../model";
-import { TYPE, fs, STICKER_BG, STICKER_TEXT, FLUSH_TEXT } from "../model";
-import { parseMarkers, type MarkKind } from "../parseMarkers";
+import { TYPE, fs } from "../model";
+import { useBrand } from "../../brand/context";
+import { parseMarkers } from "../parseMarkers";
 
 // Gemeinsame Textbausteine für ALLE Layouts — ein Satz Größen/Weights, damit
 // die Slides zueinander passen. Farben immer hell auf River/dunkel.
@@ -17,6 +18,7 @@ import { parseMarkers, type MarkKind } from "../parseMarkers";
 const STACK_OVERLAP = 0.1;
 
 export function Header({ slide, dimension, minHeight }: { slide: Slide; dimension: Dimension; minHeight?: number }) {
+  const palette = useBrand().palette;
   const hasK = slide.kicker.trim().length > 0;
   const hasH = slide.heading.trim().length > 0;
   if (!hasK && !hasH) return minHeight ? <div className="cx-header" style={{ minHeight }} /> : null;
@@ -29,7 +31,7 @@ export function Header({ slide, dimension, minHeight }: { slide: Slide; dimensio
   const eyebrow = (rotate: boolean) => (
     <span
       className="cx-eyebrow-sticker"
-      style={{ fontSize: kickerSize, transform: rotate ? `rotate(${slide.tilt}deg)` : undefined, background: STICKER_BG[slide.kickerColor], color: STICKER_TEXT[slide.kickerColor] }}
+      style={{ fontSize: kickerSize, transform: rotate ? `rotate(${slide.tilt}deg)` : undefined, background: palette[slide.kickerColor].bg, color: palette[slide.kickerColor].on }}
     >
       {slide.kicker}
     </span>
@@ -37,7 +39,7 @@ export function Header({ slide, dimension, minHeight }: { slide: Slide; dimensio
   const headingStick = (rotate: boolean, extra?: CSSProperties) => (
     <span
       className="cx-heading-sticker"
-      style={{ fontSize: headingSize, fontWeight: TYPE.headingWeight, transform: rotate ? `rotate(${slide.tilt}deg)` : undefined, background: STICKER_BG[slide.headingColor], color: STICKER_TEXT[slide.headingColor], ...extra }}
+      style={{ fontSize: headingSize, fontWeight: TYPE.headingWeight, transform: rotate ? `rotate(${slide.tilt}deg)` : undefined, background: palette[slide.headingColor].bg, color: palette[slide.headingColor].on, ...extra }}
     >
       {slide.heading}
     </span>
@@ -64,7 +66,7 @@ export function Header({ slide, dimension, minHeight }: { slide: Slide; dimensio
         (slide.kickerSticker ? (
           <div className="cx-eyebrow-wrap" style={{ marginBottom: kickerMB }}>{eyebrow(true)}</div>
         ) : (
-          <div className="cx-kicker" style={{ fontSize: kickerSize, letterSpacing: `${TYPE.kickerTrack}em`, color: FLUSH_TEXT[slide.kickerColor], marginBottom: kickerMB }}>
+          <div className="cx-kicker" style={{ fontSize: kickerSize, letterSpacing: `${TYPE.kickerTrack}em`, color: palette[slide.kickerColor].flush, marginBottom: kickerMB }}>
             {slide.kicker}
           </div>
         ))}
@@ -73,20 +75,13 @@ export function Header({ slide, dimension, minHeight }: { slide: Slide; dimensio
         (slide.headingSticker ? (
           <div className="cx-heading-wrap" style={{ marginBottom: bodyGap }}>{headingStick(true)}</div>
         ) : (
-          <h2 className="cx-heading" style={{ fontSize: headingSize, fontWeight: TYPE.headingWeight, color: FLUSH_TEXT[slide.headingColor], marginBottom: bodyGap }}>
+          <h2 className="cx-heading" style={{ fontSize: headingSize, fontWeight: TYPE.headingWeight, color: palette[slide.headingColor].flush, marginBottom: bodyGap }}>
             {slide.heading}
           </h2>
         ))}
     </div>
   );
 }
-
-const MARK_CLASS: Record<MarkKind, string> = {
-  none: "",
-  rose: "cx-mark cx-mark-rose",
-  wind: "cx-mark cx-mark-wind",
-  white: "cx-mark cx-mark-white",
-};
 
 // Kleiner, stabiler Tilt pro Marker (deterministisch, nicht bei jedem Render neu).
 function markTilt(text: string, i: number): number {
@@ -96,21 +91,27 @@ function markTilt(text: string, i: number): number {
 }
 
 export function BodyText({ text, dimension }: { text: string; dimension: Dimension }) {
+  const brand = useBrand();
+  const slots = brand.colors.markSlots;
   const paras = parseMarkers(text);
   if (paras.length === 0) return null;
   return (
     <div className="cx-body" style={{ fontSize: fs(dimension, TYPE.body), lineHeight: TYPE.bodyLine, fontWeight: TYPE.bodyWeight }}>
       {paras.map((runs, i) => (
         <p key={i}>
-          {runs.map((r, j) =>
-            r.mark === "none" ? (
-              <span key={j}>{r.text}</span>
-            ) : (
-              <span key={j} className={MARK_CLASS[r.mark]} style={{ transform: `rotate(${markTilt(r.text, j)}deg)` }}>
+          {runs.map((r, j) => {
+            if (r.slot == null) return <span key={j}>{r.text}</span>;
+            const c = brand.palette[slots[r.slot % slots.length]];
+            return (
+              <span
+                key={j}
+                className="cx-mark"
+                style={{ background: c.bg, color: c.on, transform: `rotate(${markTilt(r.text, j)}deg)` }}
+              >
                 {r.text}
               </span>
-            ),
-          )}
+            );
+          })}
         </p>
       ))}
     </div>

@@ -9,43 +9,52 @@ import { BottomSheet } from "./components/BottomSheet";
 import { usePhoto } from "./hooks/usePhoto";
 import { usePerson } from "./hooks/usePerson";
 import { useIllustration } from "./hooks/useIllustration";
-import { DEFAULT_DIMENSION, getDimension } from "./lib/dimensions";
-import { autoMainSize } from "./lib/layout";
-import { extents, clampToCanvas, violatesSafe, type Size, type Pos } from "./lib/geometry";
-import { renderStageToJpg, downloadBlob, shareBlob, canShareJpg } from "./lib/exportImage";
-import { loadDraft, saveDraft } from "./lib/draft";
-import { getLogo, DEFAULT_LOGO, type LogoState } from "./lib/logos";
+import { getDimension } from "./core/canvas/dimension";
+import { autoMainSize } from "./core/text/layout";
+import { extents, clampToCanvas, violatesSafe, type Size, type Pos } from "./core/canvas/geometry";
+import { renderStageToJpg, downloadBlob, shareBlob, canShareJpg } from "./core/canvas/exportImage";
+import { loadDraft, saveDraft } from "./core/doc/draft";
+import { DEFAULT_LOGO, type LogoState } from "./core/doc/logo";
 import { LogoLayer } from "./components/LogoLayer";
 import { BusyOverlay, CUTOUT_BUSY } from "./core/ui/BusyOverlay";
-import { IMAGE_ERROR_TEXT, ACCEPTED_TYPES } from "./lib/image";
-import { ILLU_ERROR_TEXT, ILLU_TYPES } from "./lib/illustration";
-import { PERSON_TYPES, PERSON_ERROR_TEXT } from "./lib/personImage";
-import { SEC_MAX, secondaryStyle, type Claim, type Mode, type BgPattern } from "./lib/types";
-import { RANDOM, DEFAULTS } from "./lib/config";
+import { IMAGE_ERROR_TEXT, ACCEPTED_TYPES } from "./core/media/image";
+import { ILLU_ERROR_TEXT, ILLU_TYPES } from "./core/media/illustration";
+import { PERSON_TYPES, PERSON_ERROR_TEXT } from "./core/media/personImage";
+import { type Claim, type Mode, type BgPattern } from "./core/doc/claim";
+import { DEFAULTS } from "./core/config";
+import { useBrand } from "./brand/context";
+import { paletteKey, type Brand } from "./brand/contract";
 
 const rnd = (range: number) => Math.round((Math.random() * 2 - 1) * range * 100) / 100;
-const randomTilt = () => rnd(RANDOM.tiltDeg);
-const randomOffset = () => rnd(RANDOM.offset);
 
-const defaultClaim = (): Claim => ({
-  upper: "", main: "", lower: "",
-  capUpper: true, capMain: true, capLower: true,
-  upperStyle: "white", mainStyle: "rose", lowerStyle: "white",
-  tilt: randomTilt(),
-  mainSize: DEFAULTS.mainSize,
-  stdScale: DEFAULTS.stdScale,
-  secScale: SEC_MAX,
-  upperOffset: randomOffset(),
-  lowerOffset: randomOffset(),
-  x: 0.5, y: DEFAULTS.claimY,
-});
+// Startwerte kommen aus dem Marken-Paket: erste Palettenfarbe als Haupt-,
+// die dazu vorgesehene Sekundaerfarbe fuer Oben/Unten.
+const defaultClaim = (brand: Brand): Claim => {
+  const st = brand.sticker;
+  const main = brand.colors.order[0];
+  const secondary = brand.colors.secondaryFor(main);
+  return {
+    upper: "", main: "", lower: "",
+    capUpper: brand.type.caps, capMain: brand.type.caps, capLower: brand.type.caps,
+    upperStyle: secondary, mainStyle: main, lowerStyle: secondary,
+    tilt: rnd(st.tiltRange),
+    mainSize: DEFAULTS.mainSize,
+    stdScale: DEFAULTS.stdScale,
+    secScale: st.secondaryMax,
+    upperOffset: rnd(st.offsetRange),
+    lowerOffset: rnd(st.offsetRange),
+    x: 0.5, y: DEFAULTS.claimY,
+  };
+};
 
 // Entwurf vom letzten Besuch (ohne Bilder) — einmal beim Start gelesen.
 const draft = loadDraft();
 const shareSupported = canShareJpg();
 
 export default function App() {
-  const [dimensionKey, setDimensionKey] = useState(draft?.dimensionKey ?? DEFAULT_DIMENSION.key);
+  const brand = useBrand();
+  const st = brand.sticker;
+  const [dimensionKey, setDimensionKey] = useState(draft?.dimensionKey ?? brand.formats[0].key);
   const [advanced, setAdvanced] = useState(draft?.advanced ?? false);
   const [exporting, setExporting] = useState(false);
   const [fontsReady, setFontsReady] = useState(false);
@@ -54,15 +63,25 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [mode, setMode] = useState<Mode>(draft?.mode ?? "photo");
   const [bgPattern, setBgPattern] = useState<BgPattern>(draft?.bgPattern ?? "paper");
-  const [claim, setClaim] = useState<Claim>(() => ({ ...defaultClaim(), ...draft?.claim }));
+  const [claim, setClaim] = useState<Claim>(() => {
+    const c = { ...defaultClaim(brand), ...draft?.claim };
+    // Farben aus dem Entwurf gegen die Palette der Marke pruefen — ein Entwurf
+    // kann aus einer anderen Marke oder einer aelteren Palette stammen.
+    return {
+      ...c,
+      mainStyle: paletteKey(brand, c.mainStyle),
+      upperStyle: paletteKey(brand, c.upperStyle),
+      lowerStyle: paletteKey(brand, c.lowerStyle),
+    };
+  });
   // Logo aus dem Entwurf nur übernehmen, wenn die Datei noch existiert.
   const [logo, setLogo] = useState<LogoState>(() => {
     const l = { ...DEFAULT_LOGO, ...draft?.logo };
-    return getLogo(l.key) ? l : { ...l, key: null };
+    return brand.logo.options.some((o) => o.key === l.key) ? l : { ...l, key: null };
   });
 
   const stageRef = useRef<HTMLDivElement>(null);
-  const dimension = getDimension(dimensionKey);
+  const dimension = getDimension(brand.formats, dimensionKey);
 
   const photo = usePhoto(advanced, dimension);
   const person = usePerson(dimension);
@@ -81,16 +100,16 @@ export default function App() {
     return () => clearTimeout(t);
   }, [claim, mode, bgPattern, dimensionKey, advanced, logo]);
 
-  const logoOption = getLogo(logo.key);
+  const logoOption = brand.logo.options.find((o) => o.key === logo.key) ?? null;
   const patchLogo = (patch: Partial<LogoState>) => setLogo((l) => ({ ...l, ...patch }));
 
   // Effektive Main-Größe wird abgeleitet (nicht gespeichert): Standard = auto
   // an die Safety-Zone, Advanced = manueller Wert.
   const effectiveMainSize = useMemo(
-    () => (advanced ? claim.mainSize : autoMainSize(claim, dimension) * claim.stdScale),
+    () => (advanced ? claim.mainSize : autoMainSize(claim, dimension, brand) * claim.stdScale),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [advanced, claim.mainSize, claim.stdScale, claim.upper, claim.main, claim.lower,
-     claim.capUpper, claim.capMain, claim.capLower, dimension, fontsReady],
+     claim.capUpper, claim.capMain, claim.capLower, dimension, brand, fontsReady],
   );
 
   const patchClaim = (patch: Partial<Claim>) => setClaim((c) => ({ ...c, ...patch }));
@@ -100,20 +119,20 @@ export default function App() {
     if (on) {
       // Beim Wechsel in Advanced die Regler von den Standard-Werten übernehmen.
       photo.adoptStandardLook();
-      setClaim((c) => ({ ...c, mainSize: autoMainSize(c, dimension) * c.stdScale }));
+      setClaim((c) => ({ ...c, mainSize: autoMainSize(c, dimension, brand) * c.stdScale }));
     } else {
       setClaim((c) => ({
         ...c,
-        secScale: SEC_MAX,
-        capUpper: true, capMain: true, capLower: true,
-        upperStyle: secondaryStyle(c.mainStyle),
-        lowerStyle: secondaryStyle(c.mainStyle),
+        secScale: st.secondaryMax,
+        capUpper: brand.type.caps, capMain: brand.type.caps, capLower: brand.type.caps,
+        upperStyle: brand.colors.secondaryFor(c.mainStyle),
+        lowerStyle: brand.colors.secondaryFor(c.mainStyle),
       }));
     }
   };
 
   const onReroll = () =>
-    patchClaim({ tilt: randomTilt(), upperOffset: randomOffset(), lowerOffset: randomOffset() });
+    patchClaim({ tilt: rnd(st.tiltRange), upperOffset: rnd(st.offsetRange), lowerOffset: rnd(st.offsetRange) });
 
   // Einmaliger Hinweis auf Pan/Zoom nach dem ersten Foto (außerhalb der Stage,
   // landet nie im Export).
@@ -178,9 +197,9 @@ export default function App() {
     setExporting(true);
     try {
       const restore = await photo.swapFullForExport();
-      const blob = await renderStageToJpg(stage, dimension.width, dimension.height);
+      const blob = await renderStageToJpg(stage, dimension.width, dimension.height, brand.colors.exportBackground);
       restore();
-      const filename = `freshpost-${dimension.key}.jpg`;
+      const filename = `${brand.id}-${dimension.key}.jpg`;
       if (!share || !(await shareBlob(blob, filename))) downloadBlob(blob, filename);
     } finally {
       setExporting(false);

@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { Dimension } from "../lib/dimensions";
+import type { Dimension } from "../core/canvas/dimension";
 import type { Slide, Layer, LogoPos, LayoutType } from "./model";
 import { LayoutForeground } from "./Layouts";
 import { SwipeBar } from "./SwipeBar";

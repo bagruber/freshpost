@@ -2,14 +2,13 @@ import type {
   CarouselDoc, Slide, LayoutType, SurfaceTone, StickerColor, GradientKey, TextureMode, LogoPos,
 } from "./model";
 import {
-  LAYOUTS, LAYOUT_LABEL, SURFACE_LABEL, GRADIENTS, TEXTURES, TEXTURE_LABEL, STICKER_SWATCH, maxImages, randomTilt,
+  LAYOUTS, LAYOUT_LABEL, TEXTURES, TEXTURE_LABEL, maxImages, randomTilt,
 } from "./model";
-import { DIMENSIONS } from "../lib/dimensions";
-import { LOGOS } from "../lib/logos";
-import { Slider, Toggle, Swatches, FileButton, Segmented } from "../core/input/controls";
-import { ACCEPTED_TYPES } from "../lib/image";
+import { useBrand } from "../brand/context";
 
-const SURFACES: SurfaceTone[] = ["deep", "mid", "soft"];
+import { Slider, Toggle, Swatches, FileButton, Segmented } from "../core/input/controls";
+import { ACCEPTED_TYPES } from "../core/media/image";
+
 const IMG_ACCEPT = ACCEPTED_TYPES.join(",");
 
 type Props = {
@@ -29,6 +28,8 @@ type Props = {
 
 export function CarouselControls(props: Props) {
   const { doc, slide, slideNo, exporting, busy, onDoc, onSlide, onAddImage, onRemoveImage, onImageScale, onCutout, onExport } = props;
+  const brand = useBrand();
+  const swatches = brand.colors.order.map((k) => ({ value: k, label: brand.palette[k].label, color: brand.palette[k].bg }));
   const isSidebar = slide.layout === "sidebar";
   const isOverlay = slide.layout === "overlay";
   const isDiagonal = slide.layout === "diagonal";
@@ -52,7 +53,7 @@ export function CarouselControls(props: Props) {
 
         {usesSurface && (
           <Segmented ariaLabel="Textfläche" label="Textfläche (River-Ton)" value={slide.surface}
-            options={SURFACES.map((s) => ({ value: s, label: SURFACE_LABEL[s] }))}
+            options={brand.surface.tones.map((t) => ({ value: t.key, label: t.label }))}
             onChange={(v: SurfaceTone) => onSlide({ surface: v })} />
         )}
 
@@ -61,7 +62,7 @@ export function CarouselControls(props: Props) {
           <textarea rows={1} value={slide.kicker} placeholder="z. B. Kapitel 01"
             onChange={(e) => onSlide({ kicker: e.target.value })} />
         </label>
-        <Swatches label="Farbe Überzeile" items={STICKER_SWATCH} value={slide.kickerColor}
+        <Swatches label="Farbe Überzeile" items={swatches} value={slide.kickerColor}
           onChange={(v: StickerColor) => onSlide({ kickerColor: v })} />
         <Toggle label="Überzeile als Sticker" checked={slide.kickerSticker} onChange={(v) => onSlide({ kickerSticker: v })} />
 
@@ -70,7 +71,7 @@ export function CarouselControls(props: Props) {
           <textarea rows={2} value={slide.heading} placeholder="Titel des Slides"
             onChange={(e) => onSlide({ heading: e.target.value })} />
         </label>
-        <Swatches label="Farbe Überschrift" items={STICKER_SWATCH} value={slide.headingColor}
+        <Swatches label="Farbe Überschrift" items={swatches} value={slide.headingColor}
           onChange={(v: StickerColor) => onSlide({ headingColor: v })} />
         <Toggle label="Überschrift als Sticker" checked={slide.headingSticker} onChange={(v) => onSlide({ headingSticker: v })} />
 
@@ -134,14 +135,14 @@ export function CarouselControls(props: Props) {
         <label className="field">
           <span>Format</span>
           <select value={doc.dimensionKey} onChange={(e) => onDoc({ dimensionKey: e.target.value })}>
-            {DIMENSIONS.map((d) => <option key={d.key} value={d.key}>{d.label}</option>)}
+            {brand.formats.map((d) => <option key={d.key} value={d.key}>{d.label}</option>)}
           </select>
         </label>
 
         <div className="field" role="radiogroup" aria-label="Verlauf">
           <span>Verlauf (läuft über alle Slides)</span>
           <div className="tile-row">
-            {GRADIENTS.map((g) => (
+            {brand.surface.gradients.map((g) => (
               <button key={g.key} type="button" role="radio" aria-checked={doc.gradient === g.key}
                 className={`tile${doc.gradient === g.key ? " active" : ""}`} onClick={() => onDoc({ gradient: g.key as GradientKey })}>
                 <span className="tile-preview" style={{ backgroundImage: g.css }} />
@@ -164,7 +165,7 @@ export function CarouselControls(props: Props) {
           ))}
         </div>
 
-        {LOGOS.length > 0 && (
+        {brand.logo.options.length > 0 && (
           <div className="field" role="radiogroup" aria-label="Logo">
             <span>Logo (mittig, klein)</span>
             <div className="tile-row">
@@ -173,7 +174,7 @@ export function CarouselControls(props: Props) {
                 <span className="tile-preview tile-none" />
                 <span className="tile-label">Keins</span>
               </button>
-              {LOGOS.map((l) => (
+              {brand.logo.options.map((l) => (
                 <button key={l.key} type="button" role="radio" aria-checked={doc.logo === l.key}
                   className={`tile${doc.logo === l.key ? " active" : ""}`} onClick={() => onDoc({ logo: l.key })}>
                   <span className="tile-preview tile-logo"><img src={l.url} alt="" /></span>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { Dimension } from "../lib/dimensions";
+import type { Dimension } from "../core/canvas/dimension";
 import type { Slide, LayoutType } from "./model";
 import { LAYOUTS, LAYOUT_LABEL, LAYOUT_HINT, MAX_SLIDES } from "./model";
 import { SlideView, type RenderTheme } from "./SlideView";

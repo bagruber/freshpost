@@ -1,6 +1,6 @@
 import { useId, useLayoutEffect, useRef } from "react";
-import type { Dimension } from "../lib/dimensions";
-import { useDrag } from "../hooks/useDrag";
+import type { Dimension } from "../core/canvas/dimension";
+import { useDrag } from "../core/input/useDrag";
 
 // Freigestellte Person mit rauer, kantiger Sticker-Umrandung. Der Rahmen
 // entsteht per SVG-Filter: Alpha dilatieren (Dicke) → per Turbulenz/Displacement

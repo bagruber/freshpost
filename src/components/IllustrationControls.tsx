@@ -1,5 +1,5 @@
 import type { IllustrationState } from "../hooks/useIllustration";
-import { SLIDER } from "../lib/config";
+import { SLIDER } from "../core/config";
 import { Slider, Toggle } from "../core/input/controls";
 
 // Illustrations-spezifische Controls: Größen-Slider (Standard),

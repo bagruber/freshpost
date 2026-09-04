@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef } from "react";
-import type { Dimension } from "../lib/dimensions";
+import type { Dimension } from "../core/canvas/dimension";
 import type { Slide, LayoutType } from "./model";
 import { LAYOUTS, textZoneWidth } from "./model";
 import { Header } from "./layouts/parts";
