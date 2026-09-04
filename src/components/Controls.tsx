@@ -14,6 +14,7 @@ import { IllustrationControls, IllustrationAdvancedControls } from "./Illustrati
 import { PersonControls, PersonAdvancedControls } from "./PersonControls";
 import { Slider, Toggle, Swatches, Segmented, Tiles, FileButton, type SwatchItem, type TileItem } from "../core/input/controls";
 import { useBrand } from "../brand/context";
+import { requireColors, requireGround, requireSticker } from "../brand/contract";
 
 // Gemeinsames Bedien-UI (Mode, Claim, Format, Upload, Advanced-Claim-Regler);
 // mode-spezifische Teile liegen in Photo-/Illustration-/PersonControls.
@@ -81,6 +82,9 @@ export function Controls(props: Props) {
     logo, onLogo,
   } = props;
   const brand = useBrand();
+  const colors = requireColors(brand);
+  const sticker = requireSticker(brand);
+  const ground = requireGround(brand);
   const isPhoto = mode === "photo";
   const isIllu = mode === "illustration";
   const isPerson = mode === "person";
@@ -94,17 +98,17 @@ export function Controls(props: Props) {
 
   // Sticker-Farben als Chip-Reihe; was die Marke verbietet, kommt ausgegraut.
   const styleItems = (isAllowed: (s: PaletteKey) => boolean): SwatchItem<PaletteKey>[] =>
-    brand.colors.order.map((key) => ({
+    colors.order.map((key) => ({
       value: key,
-      label: brand.palette[key].label,
-      color: brand.palette[key].bg,
+      label: colors.palette[key].label,
+      color: colors.palette[key].bg,
       disabled: !isAllowed(key),
     }));
 
   const setMainStyle = (s: PaletteKey) => {
     const patch: Partial<Claim> = { mainStyle: s };
-    if (hasUpper && !brand.colors.adjacent(claim.upperStyle, s)) patch.upperStyle = brand.colors.secondaryFor(s);
-    if (hasLower && !brand.colors.adjacent(claim.lowerStyle, s)) patch.lowerStyle = brand.colors.secondaryFor(s);
+    if (hasUpper && !colors.adjacent(claim.upperStyle, s)) patch.upperStyle = colors.secondaryFor(s);
+    if (hasLower && !colors.adjacent(claim.lowerStyle, s)) patch.lowerStyle = colors.secondaryFor(s);
     onClaim(patch);
   };
 
@@ -112,7 +116,7 @@ export function Controls(props: Props) {
     value: p,
     label: PATTERN_LABEL[p],
     previewClass: `tile-${p}`,
-    previewStyle: p === "paper" ? { backgroundImage: `url(${brand.surface.paperUrl})` } : undefined,
+    previewStyle: p === "paper" ? { backgroundImage: `url(${ground.paperUrl})` } : undefined,
   }));
 
   const logoItems: TileItem<string>[] = [
@@ -225,7 +229,7 @@ export function Controls(props: Props) {
 
           <Slider label={`Oben/Unten-Größe ${Math.round(claim.secScale * 100)}% von Claim`}
             value={Math.round(claim.secScale * 100)} min={SLIDER.secScaleMin}
-            max={Math.round(brand.sticker.secondaryMax * 100)} step={1}
+            max={Math.round(sticker.secondaryMax * 100)} step={1}
             onChange={(v) => onClaim({ secScale: v / 100 })} />
 
           <Slider label={`Neigung ${claim.tilt.toFixed(1)}°`}
@@ -241,17 +245,17 @@ export function Controls(props: Props) {
 
           {hasUpper && (
             <Swatches label="Farbe Oben" value={claim.upperStyle}
-              items={styleItems((s) => brand.colors.adjacent(s, claim.mainStyle))}
+              items={styleItems((s) => colors.adjacent(s, claim.mainStyle))}
               onChange={(s) => onClaim({ upperStyle: s })} />
           )}
           <Swatches label="Farbe Claim" value={claim.mainStyle}
             items={styleItems((s) =>
-              (!hasUpper || brand.colors.adjacent(claim.upperStyle, s)) &&
-              (!hasLower || brand.colors.adjacent(claim.lowerStyle, s)))}
+              (!hasUpper || colors.adjacent(claim.upperStyle, s)) &&
+              (!hasLower || colors.adjacent(claim.lowerStyle, s)))}
             onChange={setMainStyle} />
           {hasLower && (
             <Swatches label="Farbe Unten" value={claim.lowerStyle}
-              items={styleItems((s) => brand.colors.adjacent(s, claim.mainStyle))}
+              items={styleItems((s) => colors.adjacent(s, claim.mainStyle))}
               onChange={(s) => onClaim({ lowerStyle: s })} />
           )}
 

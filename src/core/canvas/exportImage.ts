@@ -58,16 +58,25 @@ export function canShareJpg(): boolean {
   }
 }
 
-// Teilt den Blob über das Share-Sheet. true = geteilt oder vom User
-// abgebrochen; false = Teilen nicht möglich (Aufrufer lädt dann herunter).
-export async function shareBlob(blob: Blob, filename: string): Promise<boolean> {
-  const file = new File([blob], filename, { type: "image/jpeg" });
-  if (typeof navigator.canShare !== "function" || !navigator.canShare({ files: [file] })) return false;
+// Teilt ein oder mehrere Bilder ueber das Share-Sheet. true = geteilt oder
+// vom User abgebrochen; false = Teilen nicht moeglich (Aufrufer laedt dann
+// herunter).
+//
+// Mehrere Dateien auf einmal sind der einzig brauchbare Weg fuer ein
+// Karussell: mobile Browser blockieren mehrfache automatische Downloads nach
+// dem ersten.
+export async function shareBlob(blob: Blob | Blob[], filename: string | string[]): Promise<boolean> {
+  const blobs = Array.isArray(blob) ? blob : [blob];
+  const names = Array.isArray(filename) ? filename : [filename];
+  if (blobs.length === 0) return false;
+  const files = blobs.map((b, i) => new File([b], names[i] ?? `bild-${i + 1}.jpg`, { type: "image/jpeg" }));
+
+  if (typeof navigator.canShare !== "function" || !navigator.canShare({ files })) return false;
   try {
-    await navigator.share({ files: [file] });
+    await navigator.share({ files });
     return true;
   } catch (e) {
-    // Abbruch durch den User ist kein Fehler — nicht zusätzlich downloaden.
+    // Abbruch durch den User ist kein Fehler — nicht zusaetzlich downloaden.
     if (e instanceof DOMException && e.name === "AbortError") return true;
     return false;
   }

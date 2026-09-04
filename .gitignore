@@ -4,3 +4,7 @@ dist
 .DS_Store
 *.tsbuildinfo
 dev.log
+
+# Presse-Bilder Dritter — Referenzmaterial, kein Build-Input. Bleibt lokal:
+# das Repo ist oeffentlich (GitHub Pages), die Rechte liegen nicht bei uns.
+sz_beispiele/

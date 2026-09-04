@@ -23,16 +23,17 @@ import { PERSON_TYPES, PERSON_ERROR_TEXT } from "./core/media/personImage";
 import { type Claim, type Mode, type BgPattern } from "./core/doc/claim";
 import { DEFAULTS } from "./core/config";
 import { useBrand } from "./brand/context";
-import { paletteKey, type Brand } from "./brand/contract";
+import { paletteKey, requireColors, requireSticker, type Brand } from "./brand/contract";
 
 const rnd = (range: number) => Math.round((Math.random() * 2 - 1) * range * 100) / 100;
 
 // Startwerte kommen aus dem Marken-Paket: erste Palettenfarbe als Haupt-,
 // die dazu vorgesehene Sekundaerfarbe fuer Oben/Unten.
 const defaultClaim = (brand: Brand): Claim => {
-  const st = brand.sticker;
-  const main = brand.colors.order[0];
-  const secondary = brand.colors.secondaryFor(main);
+  const st = requireSticker(brand);
+  const colors = requireColors(brand);
+  const main = colors.order[0];
+  const secondary = colors.secondaryFor(main);
   return {
     upper: "", main: "", lower: "",
     capUpper: brand.type.caps, capMain: brand.type.caps, capLower: brand.type.caps,
@@ -53,7 +54,10 @@ const shareSupported = canShareJpg();
 
 export default function App() {
   const brand = useBrand();
-  const st = brand.sticker;
+  // Der Einzelpost ist freshs Sticker-Werkzeug: ohne diese Faehigkeiten
+  // darf diese Ansicht gar nicht erst gerendert werden (siehe Root.tsx).
+  const st = requireSticker(brand);
+  const colors = requireColors(brand);
   const [dimensionKey, setDimensionKey] = useState(draft?.dimensionKey ?? brand.formats[0].key);
   const [advanced, setAdvanced] = useState(draft?.advanced ?? false);
   const [exporting, setExporting] = useState(false);
@@ -125,8 +129,8 @@ export default function App() {
         ...c,
         secScale: st.secondaryMax,
         capUpper: brand.type.caps, capMain: brand.type.caps, capLower: brand.type.caps,
-        upperStyle: brand.colors.secondaryFor(c.mainStyle),
-        lowerStyle: brand.colors.secondaryFor(c.mainStyle),
+        upperStyle: colors.secondaryFor(c.mainStyle),
+        lowerStyle: colors.secondaryFor(c.mainStyle),
       }));
     }
   };
@@ -197,7 +201,7 @@ export default function App() {
     setExporting(true);
     try {
       const restore = await photo.swapFullForExport();
-      const blob = await renderStageToJpg(stage, dimension.width, dimension.height, brand.colors.exportBackground);
+      const blob = await renderStageToJpg(stage, dimension.width, dimension.height, brand.exportBackground);
       restore();
       const filename = `${brand.id}-${dimension.key}.jpg`;
       if (!share || !(await shareBlob(blob, filename))) downloadBlob(blob, filename);

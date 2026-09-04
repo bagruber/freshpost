@@ -35,7 +35,10 @@ describe("Der Kern kennt keine Marke", () => {
   });
 
   it("importiert nirgends aus src/brands/", () => {
-    expect(core.filter(([, t]) => importsBrandPack(t)).map(([p]) => p)).toEqual([]);
+    // Tests sind ausgenommen: dass der Kern MIT einer Marke funktioniert, laesst
+    // sich nur pruefen, indem der Test eine importiert. Ausgeliefert wird davon
+    // nichts — es geht um den Produktivcode.
+    expect(coreCode.filter(([, t]) => importsBrandPack(t)).map(([p]) => p)).toEqual([]);
   });
 
   it("enthaelt keine Farbliterale — Hex, rgb() oder hsl()", () => {
@@ -43,7 +46,9 @@ describe("Der Kern kennt keine Marke", () => {
     for (const [p, text] of coreCode) {
       text.split("\n").forEach((line, i) => {
         // Kommentare zaehlen nicht: dort steht erklaerender Text, kein Wert.
-        const code = line.replace(/\/\/.*$/, "").replace(/\/\*.*?\*\//g, "");
+        // Das abschliessende \r muss zuerst weg: sonst greift `$` nicht, das
+        // Kommentar bleibt stehen, und "React #185" gilt als Farbwert.
+        const code = line.replace(/\r$/, "").replace(/\/\/.*/, "").replace(/\/\*.*?\*\//g, "");
         if (/#[0-9a-fA-F]{3,8}\b|\brgba?\(\s*\d|\bhsla?\(\s*\d/.test(code)) {
           found.push(`${p}:${i + 1}  ${line.trim()}`);
         }

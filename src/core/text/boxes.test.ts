@@ -1,11 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { buildSegments, segUnitHeight } from "./boxes";
 import type { Claim } from "../doc/claim";
-import type { StickerSpec } from "../../brand/contract";
+import type { StickerCapability } from "../../brand/contract";
 
 // Erfundenes Rezept — der Kern soll mit jedem funktionieren, nicht nur mit dem
 // von fresh.
-const st: StickerSpec = {
+const st: StickerCapability = {
   padX: 0.5, padY: 0.2, lineTight: 1, overlapWithin: 0.25, overlapBetween: 0.2,
   tiltRange: 4, offsetRange: 0.1, secondaryMax: 0.5,
   autoSize: { min: 0.04, max: 0.2 },

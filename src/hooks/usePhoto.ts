@@ -4,13 +4,14 @@ import type { Dimension } from "../core/canvas/dimension";
 import { loadBackgroundImage } from "../core/media/image";
 import { scaleGrade, type Grade } from "../core/color/grade";
 import { useBrand } from "../brand/context";
+import { requireImage } from "../brand/contract";
 import { DEFAULTS } from "../core/config";
 
 // Kompletter Foto-Modus-Zustand: Grade-Regler (Standard: ein CI-Look-Regler,
 // Advanced: Einzelregler) plus die Bild-Pipeline aus useBackgroundImage.
 
 export function usePhoto(advanced: boolean, dimension: Dimension) {
-  const base = useBrand().image.grade;
+  const base = requireImage(useBrand()).grade;
   const [imgStrength, setImgStrength] = useState(DEFAULTS.imgStrength); // Standard: ein Look-Regler
   const [gradeAdv, setGradeAdv] = useState<Grade>(() => scaleGrade(base, DEFAULTS.gradeFactor));
 

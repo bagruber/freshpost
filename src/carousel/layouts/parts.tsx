@@ -3,7 +3,8 @@ import type { Dimension } from "../../core/canvas/dimension";
 import type { Slide } from "../model";
 import { TYPE, fs } from "../model";
 import { useBrand } from "../../brand/context";
-import { parseMarkers } from "../parseMarkers";
+import { requireColors } from "../../brand/contract";
+import { parseMarkers } from "../../core/text/markers";
 
 // Gemeinsame Textbausteine für ALLE Layouts — ein Satz Größen/Weights, damit
 // die Slides zueinander passen. Farben immer hell auf River/dunkel.
@@ -18,7 +19,7 @@ import { parseMarkers } from "../parseMarkers";
 const STACK_OVERLAP = 0.1;
 
 export function Header({ slide, dimension, minHeight }: { slide: Slide; dimension: Dimension; minHeight?: number }) {
-  const palette = useBrand().palette;
+  const palette = requireColors(useBrand()).palette;
   const hasK = slide.kicker.trim().length > 0;
   const hasH = slide.heading.trim().length > 0;
   if (!hasK && !hasH) return minHeight ? <div className="cx-header" style={{ minHeight }} /> : null;
@@ -91,8 +92,8 @@ function markTilt(text: string, i: number): number {
 }
 
 export function BodyText({ text, dimension }: { text: string; dimension: Dimension }) {
-  const brand = useBrand();
-  const slots = brand.colors.markSlots;
+  const colors = requireColors(useBrand());
+  const slots = colors.markSlots;
   const paras = parseMarkers(text);
   if (paras.length === 0) return null;
   return (
@@ -101,7 +102,7 @@ export function BodyText({ text, dimension }: { text: string; dimension: Dimensi
         <p key={i}>
           {runs.map((r, j) => {
             if (r.slot == null) return <span key={j}>{r.text}</span>;
-            const c = brand.palette[slots[r.slot % slots.length]];
+            const c = colors.palette[slots[r.slot % slots.length]];
             return (
               <span
                 key={j}

@@ -6,6 +6,7 @@ import type { PhotoState } from "../hooks/usePhoto";
 import { generateDotPattern } from "../core/canvas/patterns/dots";
 import { generateLinePattern } from "../core/canvas/patterns/lines";
 import { useBrand } from "../brand/context";
+import { requireGround } from "../brand/contract";
 
 // Mode-abhängiger Stage-Hintergrund. Foto: pan/zoombarer BackgroundLayer.
 // Illustration/Person: das BG-Rezept „Struktur in Grau + Marken-Tint als Multiply" —
@@ -21,7 +22,7 @@ type Props = {
 };
 
 export function CanvasBackground({ mode, bgPattern, dimension, photo, stageRef }: Props) {
-  const brand = useBrand();
+  const ground = requireGround(useBrand());
   const patternUrl = useMemo(() => {
     if (mode === "photo") return null;
     if (bgPattern === "dots") return generateDotPattern(dimension.width, dimension.height);
@@ -33,7 +34,7 @@ export function CanvasBackground({ mode, bgPattern, dimension, photo, stageRef }
     return (
       <div className="illu-bg">
         {bgPattern === "paper" && (
-          <div className="bg-paper" style={{ backgroundImage: `url(${brand.surface.paperUrl})` }} />
+          <div className="bg-paper" style={{ backgroundImage: `url(${ground.paperUrl})` }} />
         )}
         {bgPattern === "dots" && patternUrl && (
           <div className="bg-dots" style={{ backgroundImage: `url(${patternUrl})` }} />

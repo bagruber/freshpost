@@ -3,6 +3,7 @@ import type { Dimension } from "../core/canvas/dimension";
 import type { Slide } from "./model";
 import { TYPE, fs } from "./model";
 import { useBrand } from "../brand/context";
+import { getSurface, requireImage } from "../brand/contract";
 import { Header, BodyText, Attribution } from "./layouts/parts";
 import { RoughImage } from "./RoughImage";
 
@@ -15,13 +16,12 @@ type OnImgDown = (e: React.PointerEvent, bx: number, by: number) => void;
 // Flaechenton aus dem Marken-Paket; unbekannter Schluessel faellt auf den
 // ersten Ton zurueck (Entwurf aus einer anderen Marke).
 function useTone(key: string): string {
-  const tones = useBrand().surface.tones;
-  return (tones.find((t) => t.key === key) ?? tones[0]).hex;
+  return getSurface(useBrand(), key).bg;
 }
 
 // Rahmenfarbe der rauen Kante — erste Rahmenfarbe der Marke.
 function useFrameColor(): string {
-  return useBrand().image.frameColors[0].hex;
+  return requireImage(useBrand()).frameColors[0].hex;
 }
 
 type LProps = {

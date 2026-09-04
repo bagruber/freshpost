@@ -16,6 +16,7 @@ import { useLayers } from "./useLayers";
 import { loadDoc, saveDoc } from "./carouselDraft";
 import { MAX_SLIDES, maxImages, makeSlide, type CarouselDoc, type LayoutType, type Slide } from "./model";
 import { useBrand } from "../brand/context";
+import { getSurface, requireColors } from "../brand/contract";
 
 const raf = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
 const ZERO_HEIGHTS: HeaderHeights = { typo: 0, diagonal: 0, sidebar: 0, overlay: 0 };
@@ -34,13 +35,12 @@ export function CarouselApp() {
   const total = doc.slides.length;
 
   const gradientCss = useMemo(
-    () => {
-      const gs = brand.surface.gradients;
-      return (gs.find((g) => g.key === doc.gradient) ?? gs[0]).css;
-    },
+    // Verlauf UND Textflaeche kommen jetzt aus derselben Liste brand.surfaces.
+    // Die frueher getrennten Listen (gradients/tones) waren dieselbe Sache.
+    () => getSurface(brand, doc.gradient).bg,
     [doc.gradient, brand],
   );
-  const layers = useLayers(doc, dimension, brand.surface.sheetUrl);
+  const layers = useLayers(doc, dimension, brand.ground?.sheetUrl ?? "");
   const logoUrl = brand.logo.options.find((o) => o.key === doc.logo)?.url ?? null;
 
   const theme: RenderTheme = useMemo(
@@ -82,8 +82,9 @@ export function CarouselApp() {
 
   const addSlide = (layout?: LayoutType) => {
     if (doc.slides.length >= MAX_SLIDES) return;
-    const main = brand.colors.order[0];
-    const ns = makeSlide(layout ?? "typo", brand.surface.tones[0].key, main, brand.colors.secondaryFor(main));
+    const colors = requireColors(brand);
+    const main = colors.order[0];
+    const ns = makeSlide(layout ?? "typo", brand.surfaces[0].key, main, colors.secondaryFor(main));
     setDoc((d) => ({ ...d, slides: [...d.slides, ns] }));
     setSelectedId(ns.id);
   };
@@ -167,7 +168,7 @@ export function CarouselApp() {
         await raf();
         await raf();
         const el = host.firstElementChild as HTMLElement;
-        const blob = await renderStageToJpg(el, dimension.width, dimension.height, brand.colors.exportBackground);
+        const blob = await renderStageToJpg(el, dimension.width, dimension.height, brand.exportBackground);
         downloadBlob(blob, `${brand.id}-${dimension.key}-${String(i + 1).padStart(2, "0")}.jpg`);
       }
     } finally {

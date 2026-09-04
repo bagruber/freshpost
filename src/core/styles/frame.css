@@ -1,0 +1,46 @@
+/*
+ * Der markengetriebene Frame-Renderer (core/render/FrameView).
+ * Nur Struktur und Stapelung — jede Farbe, jede Groesse kommt aus dem
+ * Marken-Paket und steht inline am Element.
+ */
+
+.fp-frame {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Bildzone: auf das beschnitten, was die Farbflaeche uebrig laesst. */
+.fp-media {
+  position: absolute;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  z-index: 0;
+}
+.fp-media-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transform-origin: center;
+}
+.fp-draggable { cursor: grab; touch-action: none; }
+.fp-draggable:active { cursor: grabbing; }
+
+/* Abdunkelung, damit heller Text auf hellem Bild lesbar bleibt. */
+.fp-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.42) 0%, rgba(0, 0, 0, 0.12) 34%, rgba(0, 0, 0, 0) 58%);
+  pointer-events: none;
+}
+
+.fp-band { position: absolute; left: 0; right: 0; z-index: 1; }
+
+.fp-text { position: absolute; z-index: 2; }
+.fp-role > p { margin: 0; }
+.fp-role > p + p { margin-top: 0.55em; }
+
+.fp-credit { position: absolute; z-index: 3; letter-spacing: 0.01em; }
+
+.fp-logo { position: absolute; z-index: 3; height: auto; display: block; }

@@ -1,21 +1,54 @@
-import type { Brand, PaletteKey } from "../../brand/contract";
+import type { Brand, Layout, PaletteKey, Surface, TextRole } from "../../brand/contract";
 import { makeDimension } from "../../core/canvas/dimension";
 
 // Zweitmarke — existiert NUR fuer Tests und ist absichtlich so weit von fresh
-// entfernt wie moeglich: andere Farbnamen, drei statt sechs Farben, Serifen
-// statt Barlow Condensed, keine Neigung, keine Logos, quadratisches Format,
-// andere Nachbarschaftsregel, anderer Farb-Snap.
+// UND von SZ entfernt wie moeglich: andere Farbnamen, Serifen, keine Neigung,
+// keine Logos, quadratisches Format, andere Nachbarschaftsregel.
 //
 // Sie ist der Mechanismus hinter der Regel "jede neue Faehigkeit an der
-// Wurzel": wer etwas an fresh festnagelt — einen Farbnamen, eine Schrift, ein
-// Format, eine Regel —, bekommt hier sofort ein rotes Testfeld. Ohne sie
-// verrottet die Abstraktion still, bis eine echte zweite Marke kommt.
+// Wurzel": wer etwas an einer konkreten Marke festnagelt — einen Farbnamen,
+// eine Schrift, ein Format, eine Regel —, bekommt hier sofort ein rotes
+// Testfeld. Ohne sie verrottet die Abstraktion still.
 //
-// Wird nie ausgeliefert. Sie taucht in keinem Bundle auf, weil main.tsx sie
-// nicht importiert.
+// Sie behaelt bewusst ALLE Faehigkeiten (colors, sticker, image, ground),
+// waehrend SZ keine davon hat. So ist beides abgedeckt: eine Marke, die alles
+// kann, und eine, die fast nichts davon kennt.
+//
+// Wird nie ausgeliefert — main.tsx importiert sie nicht.
 
 const clashes = (a: PaletteKey, b: PaletteKey) =>
   (a === "sun" && b === "paper") || (a === "paper" && b === "sun");
+
+const surfaces: Surface[] = [
+  { key: "base", label: "Basis", bg: "#1d1a13", ink: "#f3efe4", muted: "rgba(243,239,228,0.6)" },
+  { key: "sun", label: "Sonne", bg: "#e8b400", ink: "#14120e", muted: "rgba(20,18,14,0.6)" },
+];
+
+const roles: Record<string, TextRole> = {
+  headline: {
+    key: "headline", label: "Titel", font: "display", weight: 400,
+    size: 0.05, lineHeight: 1.4, gapAfter: 0.04, multiline: true,
+  },
+  body: {
+    key: "body", label: "Text", font: "body", weight: 400,
+    size: 0.03, lineHeight: 1.6, gapAfter: 0, multiline: true,
+    emphasis: [{ weight: 700 }],
+  },
+};
+
+const layouts: Layout[] = [
+  {
+    key: "plain", label: "Schlicht",
+    band: "full", bandSize: "auto", align: "top", textWidth: 0.8,
+    slots: ["headline", "body"], media: 0,
+  },
+  {
+    key: "halfTop", label: "Halb oben",
+    // Feste Bandgroesse statt "auto" — der Renderer muss beides koennen.
+    band: "top", bandSize: 0.45, align: "top", textWidth: 0.8,
+    slots: ["headline"], media: 1,
+  },
+];
 
 export const probe: Brand = {
   id: "probe",
@@ -31,25 +64,38 @@ export const probe: Brand = {
     "illu-tint": "#14120e",
   },
 
-  palette: {
-    ink: { label: "Tinte", bg: "var(--probe-ink)", on: "var(--probe-paper)", flush: "#8a8577" },
-    sun: { label: "Sonne", bg: "var(--probe-sun)", on: "var(--probe-ink)", flush: "var(--probe-sun)" },
-    paper: { label: "Papier", bg: "var(--probe-paper)", on: "var(--probe-ink)", flush: "var(--probe-paper)" },
+  type: {
+    display: 'Georgia, "Times New Roman", serif',
+    body: 'Georgia, "Times New Roman", serif',
+    caps: false, // fresh setzt Versalien, diese Marke nicht
   },
 
+  surfaces,
+  roles,
+  layouts,
+
+  // Keine Logos — die Logo-UI muss dann verschwinden, nicht leer dastehen.
+  logo: { options: [], placements: [{ key: "bl", label: "unten links" }], widths: { s: 0.08, m: 0.12 } },
+
+  formats: [makeDimension("square", "Quadrat 1080×1080", 1080, 1080, { top: 60, right: 60, bottom: 60, left: 60 })],
+
+  margin: 0.09,
+  bandPadding: 0.09,
+  creditLabel: { photo: "Bild:", illustration: "Zeichnung:" },
+  exportBackground: "#14120e",
+
+  // === Faehigkeiten ===
   colors: {
+    palette: {
+      ink: { label: "Tinte", bg: "var(--probe-ink)", on: "var(--probe-paper)", flush: "#8a8577" },
+      sun: { label: "Sonne", bg: "var(--probe-sun)", on: "var(--probe-ink)", flush: "var(--probe-sun)" },
+      paper: { label: "Papier", bg: "var(--probe-paper)", on: "var(--probe-ink)", flush: "var(--probe-paper)" },
+    },
     order: ["ink", "sun", "paper"],
     // Andere Regel als fresh: gleiche Farbe erlaubt, aber sun neben paper nicht.
     adjacent: (a, b) => !clashes(a, b),
     secondaryFor: (main) => (main === "ink" ? "sun" : "ink"),
     markSlots: ["sun", "ink", "paper"],
-    exportBackground: "#14120e",
-  },
-
-  type: {
-    display: 'Georgia, "Times New Roman", serif',
-    body: 'Georgia, "Times New Roman", serif',
-    caps: false, // fresh setzt Versalien, diese Marke nicht
   },
 
   sticker: {
@@ -81,17 +127,10 @@ export const probe: Brand = {
     frameColors: [{ key: "paper", label: "Papier", hex: "#f3efe4" }],
   },
 
-  surface: {
+  ground: {
     structure: "var(--illu-structure)",
     tint: "var(--illu-tint)",
     paperUrl: "",
     sheetUrl: "",
-    gradients: [{ key: "flat", label: "Flach", css: "linear-gradient(180deg, #14120e 0%, #1d1a13 100%)" }],
-    tones: [{ key: "base", label: "Basis", hex: "#1d1a13" }],
   },
-
-  // Keine Logos — die Logo-UI muss dann verschwinden, nicht leer dastehen.
-  logo: { options: [], placements: [{ key: "bl", label: "unten links" }], widths: { s: 0.08, m: 0.12 } },
-
-  formats: [makeDimension("square", "Quadrat 1080×1080", 1080, 1080, { top: 60, right: 60, bottom: 60, left: 60 })],
 };

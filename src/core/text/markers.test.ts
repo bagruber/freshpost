@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseMarkers } from "./parseMarkers";
+import { parseMarkers } from "./markers";
 
 describe("parseMarkers", () => {
   it("plain text is one paragraph, one run", () => {

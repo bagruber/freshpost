@@ -7,6 +7,7 @@ import type { PersonLook } from "../core/doc/claim";
 import { DEFAULTS } from "../core/config";
 import { scaleGrade } from "../core/color/grade";
 import { useBrand } from "../brand/context";
+import { requireImage } from "../brand/contract";
 
 // Kompletter Person-Modus-Zustand: freigestelltes PNG/WebP, Look, Rahmen-
 // Settings, CI-Recolor (async nachgeladen), Drag/Clamp und Measure-Dedupe.
@@ -24,7 +25,8 @@ export type Person = {
 
 export function usePerson(dimension: Dimension) {
   const brand = useBrand();
-  const frames = brand.image.frameColors;
+  const image = requireImage(brand);
+  const frames = image.frameColors;
   const [item, setItem] = useState<Person | null>(null);
   const [look, setLook] = useState<PersonLook>("original");
   const [frameColor, setFrameColor] = useState<string>(frames[0].key);
@@ -34,7 +36,7 @@ export function usePerson(dimension: Dimension) {
   const [busy, setBusy] = useState(false); // Freistellen läuft (UI blockiert)
 
   // CI-Variante asynchron nachziehen (Alpha bleibt erhalten).
-  const personGrade = scaleGrade(brand.image.grade, brand.image.personGradeFactor);
+  const personGrade = scaleGrade(image.grade, image.personGradeFactor);
 
   const startRecolor = (pngUrl: string) => {
     recolorPersonToCI(pngUrl, personGrade)
@@ -87,7 +89,7 @@ export function usePerson(dimension: Dimension) {
     busy,
     displaySrc,
     look,
-    lookFilter: look === "bwriver" ? brand.image.personLookFilter : "",
+    lookFilter: look === "bwriver" ? image.personLookFilter : "",
     frameColor,
     frameHex: (frames.find((f) => f.key === frameColor) ?? frames[0]).hex,
     frameThickness,

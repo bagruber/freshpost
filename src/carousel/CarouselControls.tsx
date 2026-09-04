@@ -5,6 +5,7 @@ import {
   LAYOUTS, LAYOUT_LABEL, TEXTURES, TEXTURE_LABEL, maxImages, randomTilt,
 } from "./model";
 import { useBrand } from "../brand/context";
+import { requireColors } from "../brand/contract";
 
 import { Slider, Toggle, Swatches, FileButton, Segmented } from "../core/input/controls";
 import { ACCEPTED_TYPES } from "../core/media/image";
@@ -29,7 +30,8 @@ type Props = {
 export function CarouselControls(props: Props) {
   const { doc, slide, slideNo, exporting, busy, onDoc, onSlide, onAddImage, onRemoveImage, onImageScale, onCutout, onExport } = props;
   const brand = useBrand();
-  const swatches = brand.colors.order.map((k) => ({ value: k, label: brand.palette[k].label, color: brand.palette[k].bg }));
+  const colors = requireColors(brand);
+  const swatches = colors.order.map((k) => ({ value: k, label: colors.palette[k].label, color: colors.palette[k].bg }));
   const isSidebar = slide.layout === "sidebar";
   const isOverlay = slide.layout === "overlay";
   const isDiagonal = slide.layout === "diagonal";
@@ -53,7 +55,7 @@ export function CarouselControls(props: Props) {
 
         {usesSurface && (
           <Segmented ariaLabel="Textfläche" label="Textfläche (River-Ton)" value={slide.surface}
-            options={brand.surface.tones.map((t) => ({ value: t.key, label: t.label }))}
+            options={brand.surfaces.map((t) => ({ value: t.key, label: t.label }))}
             onChange={(v: SurfaceTone) => onSlide({ surface: v })} />
         )}
 
@@ -142,10 +144,10 @@ export function CarouselControls(props: Props) {
         <div className="field" role="radiogroup" aria-label="Verlauf">
           <span>Verlauf (läuft über alle Slides)</span>
           <div className="tile-row">
-            {brand.surface.gradients.map((g) => (
+            {brand.surfaces.map((g) => (
               <button key={g.key} type="button" role="radio" aria-checked={doc.gradient === g.key}
                 className={`tile${doc.gradient === g.key ? " active" : ""}`} onClick={() => onDoc({ gradient: g.key as GradientKey })}>
-                <span className="tile-preview" style={{ backgroundImage: g.css }} />
+                <span className="tile-preview" style={{ background: g.bg }} />
                 <span className="tile-label">{g.label}</span>
               </button>
             ))}

@@ -2,7 +2,7 @@ import type {
   CarouselDoc, Slide, SurfaceTone, StickerColor, ImageMode, TextureMode, LogoPos, TexLevels,
 } from "./model";
 import { LAYOUTS, MAX_SLIDES, makeSlide, TEXTURES, defaultDoc } from "./model";
-import type { Brand } from "../brand/contract";
+import { requireColors, type Brand } from "../brand/contract";
 import { obj, str, bool, inSet, num, readStore, writeStore } from "../core/doc/validate";
 
 // Entwurf-Persistenz für das Karussell (Text/Layout/Thema; OHNE Bilder).
@@ -21,17 +21,18 @@ function toTex(v: unknown, def: TexLevels): TexLevels {
 function toSlide(raw: unknown, brand: Brand, tones: string[]): Slide {
   const s = obj(raw);
   const layout = inSet(s.layout, LAYOUTS, "typo");
-  const main = brand.colors.order[0];
-  const secondary = brand.colors.secondaryFor(main);
-  const keys = brand.colors.order;
+  const colors = requireColors(brand);
+  const main = colors.order[0];
+  const secondary = colors.secondaryFor(main);
+  const paletteKeys = colors.order;
   const base = makeSlide(layout, tones[0], main, secondary);
   return {
     ...base,
     kicker: str(s.kicker),
-    kickerColor: inSet<StickerColor>(s.kickerColor, keys, main),
+    kickerColor: inSet<StickerColor>(s.kickerColor, paletteKeys, main),
     kickerSticker: bool(s.kickerSticker, false),
     heading: str(s.heading),
-    headingColor: inSet<StickerColor>(s.headingColor, keys, secondary),
+    headingColor: inSet<StickerColor>(s.headingColor, paletteKeys, secondary),
     headingSticker: bool(s.headingSticker, false),
     tilt: num(s.tilt, -12, 12, base.tilt),
     body: str(s.body),
@@ -47,16 +48,15 @@ function toSlide(raw: unknown, brand: Brand, tones: string[]): Slide {
 
 export function loadDoc(brand: Brand): CarouselDoc {
   const def = defaultDoc(brand);
-  const tones = brand.surface.tones.map((t) => t.key);
-  const gradients = brand.surface.gradients.map((g) => g.key);
+  const keys = brand.surfaces.map((s) => s.key);
   return readStore<CarouselDoc>(KEY, (raw) => {
     const d = obj(raw);
     const arr = Array.isArray(d.slides) ? d.slides : [];
-    const slides = arr.slice(0, MAX_SLIDES).map((x) => toSlide(x, brand, tones));
+    const slides = arr.slice(0, MAX_SLIDES).map((x) => toSlide(x, brand, keys));
     if (slides.length === 0) return def;
     return {
       slides,
-      gradient: inSet(d.gradient, gradients, gradients[0]),
+      gradient: inSet(d.gradient, keys, keys[0]),
       texBack: toTex(d.texBack, def.texBack),
       texFront: toTex(d.texFront, def.texFront),
       logo: str(d.logo) || null,

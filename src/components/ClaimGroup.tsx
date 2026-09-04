@@ -4,6 +4,7 @@ import type { Dimension } from "../core/canvas/dimension";
 import { buildSegments } from "../core/text/boxes";
 import { useDrag } from "../core/input/useDrag";
 import { useBrand } from "../brand/context";
+import { requireColors, requireSticker } from "../brand/contract";
 
 // Stack aus Sektionsboxen (oben / main / unten). Jede Sektion ist eine Box mit
 // durchgehendem Hintergrund; Zeilen darin eng gestapelt. Oben/Unten liegen
@@ -21,7 +22,8 @@ type Props = {
 
 export function ClaimGroup({ claim, mainSize, dimension, stageRef, onDrag, onMeasure }: Props) {
   const brand = useBrand();
-  const st = brand.sticker;
+  const st = requireSticker(brand);
+  const palette = requireColors(brand).palette;
   const groupRef = useRef<HTMLDivElement>(null);
   const onPointerDown = useDrag(stageRef, onDrag);
 
@@ -69,14 +71,14 @@ export function ClaimGroup({ claim, mainSize, dimension, stageRef, onDrag, onMea
                 key={j}
                 className="claim-line"
                 style={{
-                  color: brand.palette[seg.style].on,
+                  color: palette[seg.style].on,
                   padding: `${st.padY}em ${st.padX}em`,
                   marginTop: j === 0 ? 0 : `-${st.overlapWithin}em`,
                 }}
               >
                 {/* Hintergrund (z0) liegt unter ALLEM Text (z1) der Sektion —
                     so kann keine Box fremden Text verdecken. */}
-                <span className="claim-bg" style={{ background: brand.palette[seg.style].bg }} />
+                <span className="claim-bg" style={{ background: palette[seg.style].bg }} />
                 <span className="claim-fg">{line}</span>
               </div>
             ))}

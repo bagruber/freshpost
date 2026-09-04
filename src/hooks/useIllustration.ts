@@ -4,13 +4,14 @@ import type { Dimension } from "../core/canvas/dimension";
 import { loadIllustration, illuSrc, type Illu } from "../core/media/illustration";
 import { snapColor } from "../core/color/snap";
 import { useBrand } from "../brand/context";
+import { requireImage } from "../brand/contract";
 import { DEFAULTS } from "../core/config";
 
 // Kompletter Illustrations-Modus-Zustand: SVG/PNG, umschaltbares CI-Recolor,
 // Drag/Clamp und Measure-Dedupe.
 
 export function useIllustration(dimension: Dimension) {
-  const snap = useBrand().image.colorSnap;
+  const snap = requireImage(useBrand()).colorSnap;
   const [item, setItem] = useState<Illu | null>(null);
   const [recolor, setRecolor] = useState(true);
   const [size, setSize] = useState<Size>({ w: 0, h: 0 });

@@ -5,7 +5,7 @@
 // Inhalt.
 
 import type { Dimension } from "../core/canvas/dimension";
-import type { PaletteKey, Brand } from "../brand/contract";
+import { requireColors, type PaletteKey, type Brand } from "../brand/contract";
 
 export const MAX_SLIDES = 8;
 
@@ -126,10 +126,10 @@ export function makeSlide(layout: LayoutType, surface: string, main: PaletteKey,
 // Startwerte fuer eine neue Folge. Verlauf und Flaechenton kommen aus dem
 // Marken-Paket — eine andere Marke hat andere Schluessel.
 export function defaultDoc(brand: Brand): CarouselDoc {
-  const main = brand.colors.order[0];
+  const main = requireColors(brand).order[0];
   return {
-    slides: [makeSlide("typo", brand.surface.tones[0].key, main, brand.colors.secondaryFor(main))],
-    gradient: brand.surface.gradients[0].key,
+    slides: [makeSlide("typo", brand.surfaces[0].key, main, requireColors(brand).secondaryFor(main))],
+    gradient: brand.surfaces[0].key,
     texBack: { paper: 24, halftone: 42, grain: 0 },
     texFront: zeroTex(),
     logo: null,

@@ -1,5 +1,5 @@
 import type { Claim } from "../doc/claim";
-import type { PaletteKey, StickerSpec } from "../../brand/contract";
+import type { PaletteKey, StickerCapability } from "../../brand/contract";
 import { splitLines } from "./measure";
 
 // Gemeinsame Stack-Geometrie für Rendering (ClaimGroup) und Auto-Größe (layout).
@@ -27,12 +27,12 @@ export type SegBox = {
 // beliebig groß sein, ohne Text zu verdecken. Die Werte selbst sind das
 // Sticker-Rezept der Marke.
 
-export const boxWidthPad = (st: StickerSpec) => 2 * st.padX;
+export const boxWidthPad = (st: StickerCapability) => 2 * st.padX;
 
 // Höhe einer Zeilen-Box in font-Einheiten.
-const boxHeight = (st: StickerSpec) => st.lineTight + 2 * st.padY;
+const boxHeight = (st: StickerCapability) => st.lineTight + 2 * st.padY;
 
-export function buildSegments(claim: Claim, secScale: number, st: StickerSpec): SegBox[] {
+export function buildSegments(claim: Claim, secScale: number, st: StickerCapability): SegBox[] {
   const main = splitLines(claim.main);
   if (main.length === 0) {
     return [
@@ -76,7 +76,7 @@ export function buildSegments(claim: Claim, secScale: number, st: StickerSpec): 
 
 // Höhe einer Sektion in font-Einheiten (eigene Schrift): erste Zeilen-Box voll,
 // jede weitere abzüglich der Within-Überlappung.
-export function segUnitHeight(lines: number, st: StickerSpec): number {
+export function segUnitHeight(lines: number, st: StickerCapability): number {
   const h = boxHeight(st);
   return h + (lines - 1) * (h - st.overlapWithin);
 }

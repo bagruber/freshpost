@@ -1,6 +1,6 @@
 import type { Claim } from "../doc/claim";
 import type { Dimension } from "../canvas/dimension";
-import type { Brand } from "../../brand/contract";
+import { requireSticker, type Brand } from "../../brand/contract";
 import { unitWidth } from "./measure";
 import { buildSegments, segUnitHeight, boxWidthPad } from "./boxes";
 
@@ -9,7 +9,7 @@ import { buildSegments, segUnitHeight, boxWidthPad } from "./boxes";
 // Zeile und die Gesamthoehe — die kleinere gewinnt.
 
 export function autoMainSize(claim: Claim, dim: Dimension, brand: Brand): number {
-  const st = brand.sticker;
+  const st = requireSticker(brand);
   const segs = buildSegments(claim, st.secondaryMax, st);
   const safeW = dim.width * (1 - dim.safe.left - dim.safe.right);
   const safeH = dim.height * (1 - dim.safe.top - dim.safe.bottom);

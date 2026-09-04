@@ -3,6 +3,7 @@ import type { PersonLook } from "../core/doc/claim";
 import { SLIDER } from "../core/config";
 import { Slider, Swatches, type SwatchItem } from "../core/input/controls";
 import { useBrand } from "../brand/context";
+import { requireImage } from "../brand/contract";
 
 // Person-spezifische Controls: Look (als Vorschau-Kacheln des eigenen Bildes),
 // Rahmenfarbe (Swatches), Größe (Standard); Rahmen-Feintuning (Advanced).
@@ -14,10 +15,10 @@ const LOOK_OPTIONS: { value: PersonLook; label: string }[] = [
 ];
 
 export function PersonControls({ person, onRemoveBg }: { person: PersonState; onRemoveBg: () => void }) {
-  const brand = useBrand();
+  const image = requireImage(useBrand());
   const item = person.item;
   if (!item) return null;
-  const frameItems: SwatchItem<string>[] = brand.image.frameColors.map((f) => ({
+  const frameItems: SwatchItem<string>[] = image.frameColors.map((f) => ({
     value: f.key,
     label: f.label,
     color: f.hex,
@@ -48,7 +49,7 @@ export function PersonControls({ person, onRemoveBg }: { person: PersonState; on
                 <img
                   src={o.value === "ci" ? item.ciUrl ?? item.pngUrl : item.pngUrl}
                   alt=""
-                  style={o.value === "bwriver" ? { filter: brand.image.personLookFilter } : undefined}
+                  style={o.value === "bwriver" ? { filter: image.personLookFilter } : undefined}
                 />
               </span>
               <span className="tile-label">{o.label}</span>

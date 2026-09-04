@@ -497,3 +497,17 @@
   .cx-stage-area { grid-column: 1; grid-row: 2; }
   .cx-strip { grid-row: 3; }
 }
+
+/* === Beitrag-Werkzeug: Miniaturen im Streifen === */
+.cx-slot-thumb-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}

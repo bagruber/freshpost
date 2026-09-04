@@ -7,7 +7,7 @@ import { rgbToHsv } from "../../core/color/hsv";
 // er kennt weder Rose noch Wind noch River.
 
 const snap = (rgb: { r: number; g: number; b: number }) => {
-  const out = snapColor(rgb, fresh.image.colorSnap);
+  const out = snapColor(rgb, fresh.image!.colorSnap);
   return rgbToHsv(out.r, out.g, out.b);
 };
 
@@ -41,7 +41,7 @@ describe("fresh: Farb-Snap", () => {
 
   it("Orange/Gelb/Braun bleibt unveraendert — Hauttoene sollen Hauttoene bleiben", () => {
     const orange = { r: 242, g: 133, b: 25 };
-    expect(snapColor(orange, fresh.image.colorSnap)).toEqual(orange);
+    expect(snapColor(orange, fresh.image!.colorSnap)).toEqual(orange);
   });
 
   it("helles Neutral → entsaettigtes Grau/Weiss", () => {
@@ -59,24 +59,24 @@ describe("fresh: Farb-Snap", () => {
 
 describe("fresh: Farbregeln", () => {
   it("lehnt identische Farben an einer Sektionsgrenze ab", () => {
-    expect(fresh.colors.adjacent("rose", "rose")).toBe(false);
+    expect(fresh.colors!.adjacent("rose", "rose")).toBe(false);
   });
 
   it("lehnt rose↔wind in beiden Richtungen ab", () => {
-    expect(fresh.colors.adjacent("rose", "wind")).toBe(false);
-    expect(fresh.colors.adjacent("wind", "rose")).toBe(false);
+    expect(fresh.colors!.adjacent("rose", "wind")).toBe(false);
+    expect(fresh.colors!.adjacent("wind", "rose")).toBe(false);
   });
 
   it("erlaubt unterschiedliche, nicht-kollidierende Farben", () => {
-    expect(fresh.colors.adjacent("rose", "white")).toBe(true);
-    expect(fresh.colors.adjacent("white", "river")).toBe(true);
-    expect(fresh.colors.adjacent("wind", "riverMid")).toBe(true);
+    expect(fresh.colors!.adjacent("rose", "white")).toBe(true);
+    expect(fresh.colors!.adjacent("white", "river")).toBe(true);
+    expect(fresh.colors!.adjacent("wind", "riverMid")).toBe(true);
   });
 
   it("waehlt Weiss als Sekundaerfarbe, ausser bei weissem Main (dann River)", () => {
-    expect(fresh.colors.secondaryFor("rose")).toBe("white");
-    expect(fresh.colors.secondaryFor("river")).toBe("white");
-    expect(fresh.colors.secondaryFor("white")).toBe("river");
+    expect(fresh.colors!.secondaryFor("rose")).toBe("white");
+    expect(fresh.colors!.secondaryFor("river")).toBe("white");
+    expect(fresh.colors!.secondaryFor("white")).toBe("river");
   });
 });
 
