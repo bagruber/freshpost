@@ -1,5 +1,5 @@
 import { recolorSvg } from "./svgRecolor";
-import { MAX_FILE_BYTES } from "./image";
+import { MAX_FILE_BYTES, readDataUrl } from "../core/media/readFile";
 
 // Illustration laden (SVG oder PNG). SVG wird als Text gehalten, damit das
 // CI-Recoloring umschaltbar bleibt; PNG als Data-URL.
@@ -21,15 +21,6 @@ export const ILLU_ERROR_TEXT: Record<IlluError, string> = {
   type: "Nur SVG oder PNG.",
   size: "Datei zu groß (max. 15 MB).",
 };
-
-function readDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result as string);
-    r.onerror = () => reject(new Error("read"));
-    r.readAsDataURL(file);
-  });
-}
 
 export async function loadIllustration(file: File): Promise<Omit<Illu, "x" | "y" | "scale">> {
   if (!ILLU_TYPES.includes(file.type)) throw "type" satisfies IlluError;

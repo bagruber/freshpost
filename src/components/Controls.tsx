@@ -12,7 +12,7 @@ import type { PersonState } from "../hooks/usePerson";
 import { PhotoControls, PhotoAdvancedControls } from "./PhotoControls";
 import { IllustrationControls, IllustrationAdvancedControls } from "./IllustrationControls";
 import { PersonControls, PersonAdvancedControls } from "./PersonControls";
-import { Slider, Toggle, Swatches, FileButton, type SwatchItem } from "./inputs";
+import { Slider, Toggle, Swatches, FileButton, type SwatchItem } from "../core/input/controls";
 import paperUrl from "../assets/paper.jpg";
 
 // Gemeinsames Bedien-UI (Mode, Claim, Format, Upload, Advanced-Claim-Regler);

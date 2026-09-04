@@ -2,6 +2,8 @@
 // Warmth-, Blue-Desat- und Blue-Contrast-Änderungen bereits eingebaut).
 // Reiner Per-Pixel-Pass im HSV-Raum. Betrifft ausschließlich das Hintergrundbild.
 
+import { rgbToHsv, hsvToRgb, hueDiff, normalizeHue } from "../core/color/hsv";
+
 export type Grade = {
   cv: number; // Curve / Kontrast
   wm: number; // Warmth
@@ -33,36 +35,6 @@ const ss = (e0: number, e1: number, x: number) => {
 };
 const soft = (lo: number, hi: number, v: number) => Math.max(0, Math.min(1, (v - lo) / (hi - lo)));
 
-function rgbToHsv(r: number, g: number, b: number): [number, number, number] {
-  r /= 255; g /= 255; b /= 255;
-  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
-  let h = 0;
-  if (d > 0) {
-    if (mx === r) h = ((g - b) / d + (g < b ? 6 : 0)) * 60;
-    else if (mx === g) h = ((b - r) / d + 2) * 60;
-    else h = ((r - g) / d + 4) * 60;
-  }
-  return [h, mx === 0 ? 0 : d / mx, mx];
-}
-
-function hsvToRgb(h: number, s: number, v: number): [number, number, number] {
-  h = ((h % 360) + 360) % 360;
-  const i = Math.floor(h / 60) % 6, f = h / 60 - Math.floor(h / 60);
-  const p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s);
-  const tbl: [number, number, number][] = [
-    [v, t, p], [q, v, p], [p, v, t], [p, q, v], [t, p, v], [v, p, q],
-  ];
-  const c = tbl[i];
-  return [c[0] * 255, c[1] * 255, c[2] * 255];
-}
-
-function hdiff(a: number, b: number): number {
-  let d = b - a;
-  while (d > 180) d -= 360;
-  while (d < -180) d += 360;
-  return d;
-}
-const normH = (h: number) => ((Math.round(h) % 360) + 360) % 360;
 
 // Hue-Gewichtstabellen sind konstant (unabhängig von den Slider-Werten) und
 // werden daher genau einmal beim Modul-Load berechnet — nicht pro Filter-Pass.
@@ -73,15 +45,15 @@ function buildHueLUTs() {
   const blueW = new Float32Array(360);
 
   for (let i = 0; i < 360; i++) {
-    roseW[i] = gauss(Math.abs(hdiff(i, 340)), 20);
-    const wd = hdiff(i, 175);
+    roseW[i] = gauss(Math.abs(hueDiff(i, 340)), 20);
+    const wd = hueDiff(i, 175);
     if (wd < 0) {
       windW[i] = gauss(Math.abs(wd), 12) * ss(163, 176, i) * (1 - ss(183, 200, i));
     }
     // River 200°, verbreitert Richtung Violett (bis ~260°): σ=36, oberer
     // Fade nach 252°–272° verschoben.
-    riverW[i] = gauss(Math.abs(hdiff(i, 200)), 36) * ss(185, 198, i) * (1 - ss(252, 272, i));
-    blueW[i] = gauss(Math.abs(hdiff(i, 212)), 36) * ss(168, 183, i) * (1 - ss(245, 262, i));
+    riverW[i] = gauss(Math.abs(hueDiff(i, 200)), 36) * ss(185, 198, i) * (1 - ss(252, 272, i));
+    blueW[i] = gauss(Math.abs(hueDiff(i, 212)), 36) * ss(168, 183, i) * (1 - ss(245, 262, i));
   }
   return { roseW, windW, riverW, blueW };
 }
@@ -119,33 +91,33 @@ export function filterImageData(src: ImageData, p: Grade): ImageData {
     let [h, s, v] = rgbToHsv(s0[i], s0[i + 1], s0[i + 2]);
 
     v = curvLUT[Math.min(255, Math.round(v * 255))];
-    let hi = normH(h);
+    let hi = normalizeHue(h);
 
     if (p.ro > 0) {
       const act = soft(0.6, 0.76, s);
       const w = HUE.roseW[hi] * p.ro * act;
       if (w > 0.002) {
-        h += hdiff(h, 340) * w * 0.72;
+        h += hueDiff(h, 340) * w * 0.72;
         s = Math.min(1, s + (1 - s) * HUE.roseW[hi] * p.ro * act * 0.35);
-        hi = normH(h);
+        hi = normalizeHue(h);
       }
     }
     if (p.wi > 0) {
       const act = soft(0.72, 0.86, v) * soft(0.52, 0.66, s);
       const w = HUE.windW[hi] * p.wi * act;
       if (w > 0.002) {
-        h += hdiff(h, 175) * w * 0.7;
+        h += hueDiff(h, 175) * w * 0.7;
         s = Math.min(1, s + (1 - s) * w * 0.3);
-        hi = normH(h);
+        hi = normalizeHue(h);
       }
     }
     if (p.rv > 0) {
       const act = soft(0.65, 0.5, v);
       const w = HUE.riverW[hi] * p.rv * act;
       if (w > 0.002) {
-        h += hdiff(h, 200) * w * 0.68;
+        h += hueDiff(h, 200) * w * 0.68;
         s = s + (0.5 - s) * w * 0.42;
-        hi = normH(h);
+        hi = normalizeHue(h);
       }
     }
     if (p.bd > 0) {

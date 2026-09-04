@@ -16,6 +16,7 @@ import { renderStageToJpg, downloadBlob, shareBlob, canShareJpg } from "./lib/ex
 import { loadDraft, saveDraft } from "./lib/draft";
 import { getLogo, DEFAULT_LOGO, type LogoState } from "./lib/logos";
 import { LogoLayer } from "./components/LogoLayer";
+import { BusyOverlay, CUTOUT_BUSY } from "./core/ui/BusyOverlay";
 import { IMAGE_ERROR_TEXT, ACCEPTED_TYPES } from "./lib/image";
 import { ILLU_ERROR_TEXT, ILLU_TYPES } from "./lib/illustration";
 import { PERSON_TYPES, PERSON_ERROR_TEXT } from "./lib/personImage";
@@ -324,17 +325,7 @@ export default function App() {
         )}
       </main>
       {/* Freistellen blockiert die ganze App — der Schritt ist nicht abbrechbar. */}
-      {person.busy && (
-        <div className="busy-overlay" role="alert" aria-busy="true">
-          <span className="spinner" />
-          <p className="busy-title">Hintergrund wird entfernt …</p>
-          <p className="busy-hint">
-            dauert meist 10–30 Sekunden — beim ersten Mal länger,
-            <br />
-            weil das Modell einmalig geladen wird (~50 MB)
-          </p>
-        </div>
-      )}
+      {person.busy && <BusyOverlay {...CUTOUT_BUSY} />}
     </div>
   );
 }

@@ -6,35 +6,11 @@ import {
 } from "./model";
 import { DIMENSIONS } from "../lib/dimensions";
 import { LOGOS } from "../lib/logos";
-import { Slider, Toggle, Swatches, FileButton } from "../components/inputs";
+import { Slider, Toggle, Swatches, FileButton, Segmented } from "../core/input/controls";
 import { ACCEPTED_TYPES } from "../lib/image";
 
 const SURFACES: SurfaceTone[] = ["deep", "mid", "soft"];
 const IMG_ACCEPT = ACCEPTED_TYPES.join(",");
-
-function Segmented<V extends string>({
-  label, value, options, onChange, ariaLabel,
-}: {
-  label?: string;
-  value: V;
-  options: { value: V; label: string }[];
-  onChange: (v: V) => void;
-  ariaLabel: string;
-}) {
-  return (
-    <div className="field" role="radiogroup" aria-label={ariaLabel}>
-      {label && <span>{label}</span>}
-      <div className="mode-toggle">
-        {options.map((o) => (
-          <button key={o.value} type="button" role="radio" aria-checked={value === o.value}
-            className={value === o.value ? "active" : ""} onClick={() => onChange(o.value)}>
-            {o.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 type Props = {
   doc: CarouselDoc;

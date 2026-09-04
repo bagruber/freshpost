@@ -2,12 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { getDimension } from "../lib/dimensions";
 import { renderStageToJpg, downloadBlob } from "../lib/exportImage";
-import { MAX_FILE_BYTES, ACCEPTED_TYPES } from "../lib/image";
+import { ACCEPTED_TYPES } from "../lib/image";
+import { MAX_FILE_BYTES, readDataUrl } from "../core/media/readFile";
+import { Scaled } from "../core/canvas/Scaled";
+import { BusyOverlay, CUTOUT_BUSY } from "../core/ui/BusyOverlay";
 import { getLogo } from "../lib/logos";
 import { removePersonBackground } from "../lib/removeBg";
 import { CarouselControls } from "./CarouselControls";
 import { Filmstrip } from "./Filmstrip";
-import { Scaled } from "./Scaled";
 import { SlideView, type RenderTheme } from "./SlideView";
 import { HeaderMeasurer, type HeaderHeights } from "./HeaderMeasurer";
 import { useLayers } from "./useLayers";
@@ -16,15 +18,6 @@ import { GRADIENTS, MAX_SLIDES, maxImages, makeSlide, type CarouselDoc, type Lay
 
 const raf = () => new Promise<void>((r) => requestAnimationFrame(() => r()));
 const ZERO_HEIGHTS: HeaderHeights = { typo: 0, diagonal: 0, sidebar: 0, overlay: 0 };
-
-function readDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result as string);
-    r.onerror = () => reject(new Error("read"));
-    r.readAsDataURL(file);
-  });
-}
 
 const initialDoc = loadDoc();
 
@@ -217,13 +210,7 @@ export function CarouselApp() {
       {/* Kopf-Höhen offscreen vermessen → einheitlicher Absatz-Beginn je Layout. */}
       <HeaderMeasurer slides={doc.slides} dimension={dimension} fontsReady={fontsReady} onHeights={onHeights} />
 
-      {busy && (
-        <div className="busy-overlay" role="alert" aria-busy="true">
-          <span className="spinner" />
-          <p className="busy-title">Hintergrund wird entfernt …</p>
-          <p className="busy-hint">dauert meist 10–30 Sekunden — beim ersten Mal länger (Modell ~50 MB)</p>
-        </div>
-      )}
+      {busy && <BusyOverlay {...CUTOUT_BUSY} />}
     </div>
   );
 }

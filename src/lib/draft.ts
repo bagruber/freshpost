@@ -1,5 +1,6 @@
 import type { Claim, Mode, BgPattern } from "./types";
 import { LOGO_CORNERS, LOGO_SIZES, type LogoState } from "./logos";
+import { readStore, writeStore } from "../core/doc/validate";
 
 // Entwurf-Persistenz: Claim/Mode/Format überleben Reload & Tab-Tod (mobil
 // häufig). Bewusst ohne Bilddaten — nur der leichte Text-/Einstellungs-State.
@@ -28,11 +29,12 @@ function isLogoState(v: unknown): v is LogoState {
   );
 }
 
+// Felder einzeln geprüft; `undefined` heißt „nimm den Startwert". Der Claim
+// wird nur als Objekt geprüft und über die Defaults gelegt — die Einzelfelder
+// prüft er beim Rendern selbst.
 export function loadDraft(): Partial<Draft> | null {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return null;
-    const d = JSON.parse(raw) as Partial<Draft>;
+  return readStore<Partial<Draft> | null>(KEY, (raw) => {
+    const d = raw as Partial<Draft>;
     if (typeof d !== "object" || d == null) return null;
     return {
       claim: typeof d.claim === "object" && d.claim != null ? d.claim : undefined,
@@ -42,15 +44,9 @@ export function loadDraft(): Partial<Draft> | null {
       advanced: typeof d.advanced === "boolean" ? d.advanced : undefined,
       logo: isLogoState(d.logo) ? d.logo : undefined,
     };
-  } catch {
-    return null;
-  }
+  }, null);
 }
 
 export function saveDraft(d: Draft): void {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(d));
-  } catch {
-    // Speicher voll / privater Modus → Persistenz still überspringen.
-  }
+  writeStore(KEY, d);
 }

@@ -1,5 +1,5 @@
 import { filterImageData, GRADE_BASE, scaleGrade } from "./ciFilter";
-import { MAX_FILE_BYTES } from "./image";
+import { MAX_FILE_BYTES, readDataUrl } from "../core/media/readFile";
 
 // Personen-Bilder: freigestellte PNGs/WebPs werden direkt übernommen; normale
 // Fotos (JPG oder PNG/WebP ohne Transparenz) werden im Browser freigestellt
@@ -16,15 +16,6 @@ export const PERSON_ERROR_TEXT: Record<PersonError, string> = {
   decode: "Bild konnte nicht gelesen werden.",
   removal: "Freistellen fehlgeschlagen — bitte anderes Bild versuchen.",
 };
-
-function readDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(r.result as string);
-    r.onerror = () => reject(new Error("read"));
-    r.readAsDataURL(file);
-  });
-}
 
 export async function loadPersonFile(file: File): Promise<string> {
   if (!PERSON_TYPES.includes(file.type)) throw "type" satisfies PersonError;

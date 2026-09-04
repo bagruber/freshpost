@@ -1,7 +1,7 @@
 import { BWRIVER_FILTER, type PersonState } from "../hooks/usePerson";
 import type { PersonLook, FrameColor } from "../lib/types";
 import { SLIDER } from "../lib/config";
-import { Slider, Swatches, type SwatchItem } from "./inputs";
+import { Slider, Swatches, type SwatchItem } from "../core/input/controls";
 
 // Person-spezifische Controls: Look (als Vorschau-Kacheln des eigenen Bildes),
 // Rahmenfarbe (Swatches), Größe (Standard); Rahmen-Feintuning (Advanced).

@@ -3,7 +3,7 @@ import type { Dimension } from "../lib/dimensions";
 import type { Slide, LayoutType } from "./model";
 import { LAYOUTS, LAYOUT_LABEL, LAYOUT_HINT, MAX_SLIDES } from "./model";
 import { SlideView, type RenderTheme } from "./SlideView";
-import { Scaled } from "./Scaled";
+import { Scaled } from "../core/canvas/Scaled";
 
 // Filmstreifen: die Plätze (Slots) der Folge + eine Palette der Layout-Vorlagen.
 // Bedienung per Drag-and-Drop (Laptop): Vorlage auf einen Slot ziehen setzt

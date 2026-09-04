@@ -1,6 +1,6 @@
 import type { IllustrationState } from "../hooks/useIllustration";
 import { SLIDER } from "../lib/config";
-import { Slider, Toggle } from "./inputs";
+import { Slider, Toggle } from "../core/input/controls";
 
 // Illustrations-spezifische Controls: Größen-Slider (Standard),
 // CI-Recolor-Toggle für SVGs (Advanced).

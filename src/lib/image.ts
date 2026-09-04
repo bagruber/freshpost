@@ -1,7 +1,10 @@
+import { MAX_FILE_BYTES } from "../core/media/readFile";
+
+export { MAX_FILE_BYTES };
+
 // Bild-Upload: Validierung und Dekodierung in zwei Auflösungen — voll (für den
 // Export) und klein (für die Live-Filtervorschau). Alles clientseitig.
 
-export const MAX_FILE_BYTES = 15 * 1024 * 1024; // 15 MB
 export const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/avif"];
 
 const FULL_EDGE = 2160; // längste Kante für den Export (groß genug für 1:1-Zoom)
