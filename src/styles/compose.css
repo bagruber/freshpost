@@ -262,6 +262,14 @@
 .cx-tex-row .field > span { color: var(--color-text-tertiary); }
 
 /* Bild-Liste (Freistellen / Entfernen je Bild). */
+.cx-img-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+.cx-img-item:last-of-type { border-bottom: none; }
 .cx-img-row { display: flex; align-items: center; gap: var(--space-2); }
 .cx-img-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.78rem; color: var(--color-text-secondary); }
 .cx-img-btn { padding: var(--space-1) var(--space-2); font-size: 0.75rem; margin: 0; }
