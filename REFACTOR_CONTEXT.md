@@ -70,12 +70,22 @@ zurückgestellt).
 - **html-to-image** für den Export (DOM → Canvas → JPG).
 - **vitest** (Node-Env) für Pure-Lib-Tests. **ESLint** flat config.
 
+**pnpm, nicht npm** (seit 26.08.2026, siehe OFFENE-PUNKTE.md).
+
 ```
-npm run dev       # Vite Dev-Server
-npm run build     # tsc -b && vite build
-npm run lint      # eslint .
-npm test          # vitest run   (aktuell 39 Tests, 6 Dateien)
+pnpm dev          # Vite Dev-Server
+pnpm build        # tsc -b && vite build
+pnpm lint         # eslint .   ← DEFEKT, siehe unten
+pnpm test         # vitest run   (aktuell 83 Tests, 9 Dateien)
 ```
+
+> **`pnpm lint` läuft derzeit nicht.** `typescript-eslint` bricht unter
+> TypeScript 7 hart ab (`versionMajor >= 7` → throw); das gilt für alle
+> 8.x-Versionen bis mindestens 8.69 und betrifft auch `freshdoc` und
+> `sexdiary`. Bis das gelöst ist, sind die Gates **`tsc -b`, `pnpm test` und
+> `pnpm build`** — nicht Lint. Lösung gehört in die `hausbasis`, nicht in
+> dieses Repo allein (Optionen: TypeScript 6 nur für den Linter auflösen,
+> typescript-eslint fallen lassen, oder auf TS-7.1-Support warten).
 
 Repo: `github.com/bagruber/freshpost`, Branch `main`. Vite `base` ist beim Build
 `/freshpost/` (für Pages), lokal `/`.
@@ -96,96 +106,70 @@ Repo: `github.com/bagruber/freshpost`, Branch `main`. Vite `base` ist beim Build
 
 ---
 
-## 5. Architektur — Ist-Zustand (nach Refactor §8, 2026-06-11)
+## 5. Architektur — Ist-Zustand (nach der Marken-Trennung, 2026-09-04)
 
-`src/App.tsx` (~253 Zeilen) ist nur noch **Orchestrierung**: Mode-Auswahl,
-gemeinsamer Claim-State, Format, Upload-Dispatch, Export, Komposition. Der
-mode-spezifische State lebt in je einem Hook (`usePhoto`, `useIllustration`,
-`usePerson`), deren Rückgabeobjekte als Ganzes an `Controls` und die Layer
-durchgereicht werden.
+Drei Schichten. **Die Richtung ist die Regel: der Kern importiert nie aus
+`brands/`.** Er liest die Marke zur Laufzeit aus einem Context; reine Funktionen
+bekommen sie als Argument, damit sie auch außerhalb von React laufen.
 
-### Datenfluss
+```
+src/
+  core/          kennt keine Marke — kein Hex, kein Schriftname, keine Regel
+    canvas/      Scaled · dimension · geometry · exportImage · patterns/{dots,lines}
+    color/       hsv · grade (Foto-Filter) · snap (Hue-Snap) · svgRecolor
+    text/        measure · boxes · layout
+    media/       readFile · image · illustration · personImage · removeBg
+    input/       controls.tsx (Slider/Toggle/Swatches/Segmented/Tiles/FileButton)
+                 useDrag · usePointerDrag
+    doc/         claim · logo · draft · validate
+    ui/          BusyOverlay
+    styles/      base.css (Abstände/Radien der Bedienoberfläche)
+    config.ts    Regler-Bereiche, Startwerte
+    architecture.test.ts  ← die Wurzel-Regel, mechanisch geprüft
+  brand/
+    contract.ts  nur Typen. Palette, Farbregeln, Schrift, Sticker-Rezept,
+                 Bildbehandlung, Grund, Logos, Formate
+    context.tsx  BrandProvider (setzt die Tokens als CSS Custom Properties)
+  brands/
+    fresh/       tokens.ts · index.ts · assets/{paper.jpg, glued-paper.avif, logos/}
+    _probe/      Zweitmarke, existiert NUR für Tests (siehe §8)
+  App.tsx components/ hooks/ carousel/ styles/   ← die Hülle, noch fresh-nah
+```
+
+**Wer wählt die Marke?** Ausschließlich `main.tsx`. Ein Test hält das fest.
+
+### Datenfluss Einzelpost
 ```
 App (Claim/Mode/Format/Export) + usePhoto/useIllustration/usePerson
  ├─ Controls (im BottomSheet) ── gemeinsames UI; mode-spezifisch:
- │    PhotoControls | IllustrationControls | PersonControls (+ je Advanced-Teil)
- └─ Stage (canvas-Vorschau)
-      ├─ CanvasBackground (mode-abhängig): BackgroundLayer | illu-bg(+Muster+Tint)
-      ├─ IllustrationLayer | PersonLayer (mode-abhängig, ziehbar)
-      ├─ Dropzone (wenn kein Content, im Stage, beim Export ausgeblendet)
-      └─ ClaimGroup (immer, ziehbar, oben)
+ │    PhotoControls | IllustrationControls | PersonControls
+ └─ Stage (= core/canvas/Scaled + Safety-Zone)
+      ├─ CanvasBackground · IllustrationLayer | PersonLayer
+      ├─ Dropzone · ClaimGroup · LogoLayer
 ```
 
-### Stage-/Skalierungsmodell (wichtig!)
-- `.stage` ist in **echten Export-Pixeln** dimensioniert (z. B. 1080×1920) und
-  wird für die Vorschau per `transform: scale(s)` (origin top-left)
-  herunterskaliert. `Stage.tsx` berechnet `s` per ResizeObserver.
-- Positionen/Größen der ziehbaren Layer sind **Bruchteile (0..1)** bzw. relativ
-  zur Stage-Breite → unabhängig von der Vorschau-Skalierung.
-- Die **Safety-Zone** wird **außerhalb** der skalierten `.stage` (im `.stage-scaler`)
-  gerendert, damit der Rahmen in echten Screen-Pixeln sichtbar ist und nie im
-  Export landet.
-
-### Komponenten
-- `Stage.tsx` — Skalierung + Safety-Zone-Overlay (+ warn-State).
-- `BottomSheet.tsx` — mobil: Controls als ziehbares Sheet (Peek/Open), mit
-  prominenter „Hier bearbeiten"-Zeile + kompaktem Export-Button im Header;
-  Desktop: normale Seitenspalte. Nutzt `usePointerDrag`.
-- `Controls.tsx` (~231 Zeilen) — gemeinsames Bedien-UI (Mode, Claim, Format,
-  Upload, Advanced-Claim-Regler); reicht die Hook-States weiter an:
-- `PhotoControls.tsx` / `IllustrationControls.tsx` / `PersonControls.tsx` —
-  je ein Standard-Teil (nach dem Upload-Feld) und ein Advanced-Teil (am Ende
-  des Advanced-Blocks).
-- `CanvasBackground.tsx` — mode-abhängiger Stage-Hintergrund (Foto-Layer |
-  `illu-bg` + Muster + Tint, inkl. Pattern-Generierung).
-- `ClaimGroup.tsx` — der Claim-Stack (oben/main/unten als Sektionsboxen).
-- `BackgroundLayer.tsx` — Foto mit Pan/Zoom (Pinch/Drag/Wheel).
-- `IllustrationLayer.tsx`, `PersonLayer.tsx` — ziehbare Layer.
-- `inputs.tsx` — `<Slider>` und `<Toggle>` (wiederverwendet).
+### Stage-/Skalierungsmodell (unverändert wichtig)
+- Der Inhalt ist in **echten Export-Pixeln** dimensioniert und wird per
+  `transform: scale(s)` heruntergerechnet. `core/canvas/Scaled` berechnet `s`
+  per ResizeObserver — **beide** Werkzeuge nutzen dieselbe Komponente.
+  Aufbau: `.fp-scaled` > `.fp-scaled-box` (Größe nach Skalierung) >
+  `.fp-scaled-inner` (Export-Pixel).
+- Positionen/Größen sind **Bruchteile (0..1)** bzw. relativ zur Breite.
+- Die **Safety-Zone** liegt als `overlay` im Box-Raum, also *neben* dem
+  skalierten Inhalt — sichtbar in echten Bildschirm-Pixeln, nie im Export.
 
 ### Hooks
-- `usePhoto(advanced, dimension)` — Grade-Regler-State (Standard-CI-Look +
-  Advanced-Einzelregler) + `useBackgroundImage`; `load`/`clear`,
-  `adoptStandardLook()` beim Advanced-Wechsel.
-- `useBackgroundImage(grade, dimension)` — **Foto-Pipeline**: Originale als
-  `ImageData` in Refs (Voll + Vorschau), gefilterte Vorschau als Data-URL,
-  Pan/Zoom-State (cover…1:1, abgeleitet via `clampView`), Export-Swap auf
-  Voll-Res.
-- `useIllustration(dimension)` — Illu-State (SVG/PNG), Recolor-Toggle,
-  `displaySrc`, Drag/Clamp, Measure-Dedupe, `load`/`clear`/`setScale`.
-- `usePerson(dimension)` — Person-State, Look (+`lookFilter`), Rahmen
-  (Farbe→`frameHex`, Dicke, Rauheit), async CI-Recolor, Drag/Clamp,
-  Measure-Dedupe, `load`/`clear`/`setScale`.
-- `useDrag(stageRef, onChange)` — Sticker-Drag (Greif-Offset → roher
-  Bruchteil-Mittelpunkt; Clamping machen die Mode-Hooks bzw. App beim Claim).
-- `usePointerDrag(handlers)` — Pointer-Primitive (Maus+Touch, onMove/onEnd),
-  Basis für `useDrag`, `BackgroundLayer`, `BottomSheet`.
-
-### Pure Libs (gut testbar, größtenteils mit Tests)
-- `types.ts` — `Claim`, `Mode`, `BgPattern`, `PersonLook`, `FrameColor`,
-  StickerStyles + Farbregeln (`boundaryOk`, `secondaryStyle`).
-- `dimensions.ts` — Formate + Safety-Insets (px → Bruchteil).
-- `geometry.ts` — `extents`/`clampToCanvas`/`violatesSafe` (Sticker auf Canvas)
-  und `coverGeom`/`clampView` (Foto Pan/Zoom). **Getestet (12).**
-- `boxes.ts` + `layout.ts` + `measure.ts` — Claim-Stack-Geometrie + Auto-Größe.
-- `ciFilter.ts` — HSV-Color-Grade-Filter fürs Foto (Curve/Warmth/Pulls/Blue).
-  Statische Hue-LUTs einmalig beim Modul-Load, nur Curve pro Pass. **Getestet.**
-- `ciColor.ts` — Einzelfarbe → CI (5 Gruppen). **Getestet (7).**
-- `svgRecolor.ts` — Regex-Recolor von hex/rgb im SVG-Text. **Getestet (5).**
-- `dotPattern.ts` / `linePattern.ts` — prozedurale Hintergrundmuster (Canvas →
-  Data-URL), in **Grau** gezeichnet (siehe Hintergrund-Rezept §6).
-- `image.ts` / `illustration.ts` / `personImage.ts` — Datei-Laden/Validierung.
-- `config.ts` — **zentrale Tuning-Werte** (Random-Ranges, Slider-Ranges,
-  Defaults, Auto-Size-Clamp).
-- `exportImage.ts` — Stage → JPG.
-
----
+- `usePhoto/usePerson/useIllustration(dimension)` — mode-spezifischer State.
+  Alle drei lesen ihre Marken-Werte über `useBrand()`.
+- `useBackgroundImage(grade, dimension)` — Foto-Pipeline (ImageData in Refs,
+  gefilterte Vorschau, Pan/Zoom, Export-Swap auf Voll-Res).
+- `useDrag(stageRef, onChange)` / `usePointerDrag(handlers)` — im Kern.
 
 ## 6. Nicht-offensichtliche Mechaniken (unbedingt bewahren!)
 
 Diese Dinge sind subtil und beim Refactor **leicht kaputtzumachen**:
 
-1. **Export neutralisiert das Stage-Transform.** `exportImage.ts` übergibt
+1. **Export neutralisiert das Stage-Transform.** `core/canvas/exportImage.ts` übergibt
    `style: { transform: "none", transformOrigin: "top left" }` an `toCanvas`,
    sonst landet der skalierte Inhalt oben links und der Rest füllt sich mit der
    Hintergrundfarbe. **Nicht entfernen.**
@@ -212,7 +196,7 @@ Diese Dinge sind subtil und beim Refactor **leicht kaputtzumachen**:
    ohne fremden Text zu verdecken. Schatten via `drop-shadow` am Sektions-
    Wrapper (ein Schatten pro Sektion).
 
-6. **CI-Farbabbildung (`ciColor.ts`), fünf Gruppen, voller Hue-Snap:**
+6. **Farbabbildung (`core/color/snap.ts` + `brand.image.colorSnap`), fünf Zonen, voller Hue-Snap:**
    - Neutral (S<0.16): hell → Weiß/Grau (entsättigt), dunkel → River (H198).
    - Warm (Hue 18–70: gelb/orange/braun/Haut) → **bleibt**.
    - Grün/Teal/Cyan (70–195) → Wind (H178, S≥0.70).
@@ -237,11 +221,14 @@ Diese Dinge sind subtil und beim Refactor **leicht kaputtzumachen**:
    liegt außerhalb von `.illu-bg` → unbeeinflusst.
 
 8b. **Tuning-Knöpfe zentralisiert** (User will sie schnell finden):
-   - CSS-Custom-Properties (kommentierter Block in `app.css`):
+   - CSS-Custom-Properties (Werte in `brands/fresh/tokens.ts`, gesetzt vom
+     BrandProvider):
      `--illu-structure`, `--illu-tint`, `--paper-contrast`,
      `--dots-opacity`, `--lines-opacity`.
-   - `config.ts`: Random-Ranges, Slider-Ranges, Defaults, Auto-Size-Clamp.
-   - `dotPattern.ts`/`linePattern.ts`: je ein `DOTS`/`LINES`-Konstantenblock.
+   - `core/config.ts`: Slider-Ranges und Startwerte.
+   - `brands/fresh/index.ts`: Neigungsbereich, Auto-Size-Grenzen, Logo-Breiten,
+     Foto-Look, Sticker-Rezept — alles, was das Aussehen der Marke bestimmt.
+   - `core/canvas/patterns/{dots,lines}.ts`: je ein `DOTS`/`LINES`-Block.
    - `PersonLayer.tsx`: Frame-Konstanten oben.
    Diese Verteilung bewusst beibehalten/erweitern, nicht verstecken.
 
@@ -260,48 +247,50 @@ Diese Dinge sind subtil und beim Refactor **leicht kaputtzumachen**:
 
 ---
 
-## 8. Refactor-Auftrag — ✅ umgesetzt (2026-06-11)
+## 8. Die Wurzel-Regel — ab 2026-09-04 verbindlich
 
-> Der unten beschriebene Umbau ist abgeschlossen (vier Commits: `usePerson`,
-> `useIllustration`, `usePhoto`+`CanvasBackground`, Controls-Split). §5 zeigt
-> den neuen Ist-Zustand; die Mechaniken aus §6 wurden unverändert übernommen.
+> **Jede neue Fähigkeit wird im Kern gebaut, nicht in einem der beiden
+> Werkzeuge und nicht gegen eine Marke.** Wer das umgeht, merkt es sofort:
+> vier Tests halten die Regel, statt sie nur zu vereinbaren.
 
-**Problem (war):** `App.tsx` (~352 Z.) und `Controls.tsx` (~309 Z.) tragen den State
-und das UI **aller drei Modi** nebeneinander. Mit dem dritten Modus ist die
-Schwelle erreicht, ab der sich ein Umbau lohnt (vom User ausdrücklich gewünscht,
-„behalte den Threshold im Auge").
+### Was der Kern nicht darf
+`src/core/architecture.test.ts` prüft, dass unter `src/core/`
 
-**Ziel (Vorschlag, gern challengen):**
-- Pro Modus ein **Hook** analog zu `useBackgroundImage`:
-  - `useIllustration(dimension)` → illu-State, Recolor, Drag/Clamp, Display-Src.
-  - `usePerson(dimension)` → person-State, Look, Frame-Settings, CI-Recolor,
-    Drag/Clamp.
-  (Foto hat den Hook bereits.)
-- Eine **`<CanvasBackground mode … />`**-Komponente, die das mode-abhängige
-  Hintergrund-Rendering (Foto-Layer | `illu-bg` + Muster + Tint) kapselt.
-- Optional: Controls in mode-spezifische Unter-Komponenten zerlegen
-  (`PhotoControls`, `IllustrationControls`, `PersonControls`), gemeinsamer
-  Claim-/Format-Teil geteilt.
-- Ergebnis: App nur noch Orchestrierung (Mode-Auswahl, gemeinsamer Claim-State,
-  Export, Komposition), deutlich kürzer; neue Modi werden billig.
+1. **nichts aus `src/brands/` importiert** wird,
+2. **kein Farbliteral** steht (Hex, `rgb()`, `hsl()` — Kommentare zählen nicht),
+3. **kein Schriftname** als Literal steht,
+4. und dass **nur `main.tsx`** ein konkretes Marken-Paket wählt.
 
-**Constraints / Definition of Done:**
-- **Kein Verhalten ändern.** Reiner Struktur-Refactor. Alle in §6 gelisteten
-  Mechaniken bleiben funktional identisch (Export-Transform-Reset, Full-Res-Swap,
-  Measure-Dedupe, abgeleitete Werte, z-Ebenen, Frame-Filter, BG-Rezept).
-- **`npm run lint` clean, `npm test` grün (≥39), `npm run build` ok.** Wo
-  sinnvoll, Pure-Logik beim Verschieben mit Tests absichern.
-- Tuning-Knöpfe bleiben an ihren kommentierten Stellen (oder werden sauberer
-  zentralisiert, nicht verstreut).
-- Surgical: nicht gleichzeitig Features umbauen. Erst nach grünem Refactor
-  wieder Features.
-- Nach Abschluss: build + push + Deploy beobachten + Live prüfen.
+Wird einer davon rot, ist die Antwort fast nie „Test anpassen", sondern: der
+Wert gehört ins Marken-Paket, und der Kern liest ihn über den Vertrag.
 
-**Vorgehen (empfohlen):** klein und in Schritten, je Schritt verify
-(lint/test/build) — z. B. (1) `usePerson` extrahieren, (2) `useIllustration`,
-(3) `<CanvasBackground>`, (4) ggf. Controls-Split. Nach jedem Schritt committen.
+Der erste Test der Datei prüft, dass überhaupt Kern-Dateien gefunden wurden.
+Das ist kein Zierrat — beim Schreiben hat genau dieser Test aufgedeckt, dass
+`import.meta.glob("../**")` das eigene Verzeichnis auslässt und die Prüfung
+sonst still über eine leere Liste gelaufen wäre. Deshalb ist der Glob
+wurzel-relativ (`/src/**`).
 
----
+### Die Zweitmarke `_probe`
+`src/brands/_probe/` ist eine absichtlich fresh-fremde Marke, die **nur in
+Tests** existiert und in keinem Bundle landet: Serifen statt Barlow Condensed,
+drei Farben statt sechs, keine Neigung, quadratisches Format, andere
+Nachbarschaftsregel, anderer Farb-Snap.
+
+Sie ist der eigentliche Mechanismus. Ein Vertrag, gegen den nur eine Marke
+läuft, ist kein Vertrag — er verrottet still, bis eine zweite Marke kommt.
+`src/brands/brands.test.ts` fährt beide Marken durch dieselben Prüfungen und
+belegt zusätzlich, dass sie sich unterscheiden.
+
+**Wenn du eine Fähigkeit hinzufügst:** trag die dazugehörigen Werte in *beide*
+Marken ein. Fällt dir bei `_probe` kein sinnvoller Wert ein, ist der Wert
+vermutlich gar nicht Sache der Marke.
+
+### Was noch offen ist
+Das **Ergebnis** ist markenfrei, die **Hülle** noch nicht: `app.css` und
+`carousel.css` sprechen zusammen 46-mal `var(--fresh-*)`. Unter `_probe` verlöre
+die Bedienoberfläche ihre Akzentfarben. Der Weg dahin ist mechanisch: semantische
+Namen (`--ui-accent`, `--ui-surface`, …) einführen, die jede Marke liefern muss,
+und die beiden Stylesheets darauf umstellen.
 
 ## 9. Bekannte offene Punkte / zu verifizieren
 
@@ -313,16 +302,24 @@ Schwelle erreicht, ab der sich ein Umbau lohnt (vom User ausdrücklich gewünsch
   bewusst als Knöpfe ausgelegt; nicht „korrigieren" ohne User-Feedback.
 - **Illustration/Person haben (noch) kein Safety-Zone-Warning** wie der Claim —
   nur Canvas-Clamping. Bewusst so; nicht ungefragt nachziehen.
-- **Carousel-Modus** und **Body-Text-Design-Variante** sind geplant, aber
-  zurückgestellt — beim Strukturieren mitdenken, aber nicht vorbauen.
+- ~~**Carousel-Modus**~~ — seit 04.09.2026 committet und in Betrieb
+  (`src/carousel/`, Umschalter in `Root.tsx`). **Noch ein eigenes
+  Dokumentmodell** neben dem Einzelpost: jede neue Fähigkeit ist damit zweimal
+  zu bauen. Der nächste Schritt ist die Zusammenlegung zu einer
+  `Composition` aus `Frame`s (1 = Einzelpost, 2..8 = Karussell); das bringt
+  Undo und Vorlagen fast geschenkt mit.
+- **Karussell am Handy** ist praktisch nicht bedienbar (drei Scrollbereiche
+  übereinander, Export-Button am Ende einer scrollenden Seitenspalte) und sein
+  Export löst N Downloads statt einer Freigabe aus.
+- **Die Bedienoberfläche ist noch fresh-gebunden** (§8, letzter Abschnitt).
 
 ---
 
 ## 10. Schnellreferenz: Befehls-/Deploy-Loop
 
 ```
-# nach Änderungen:
-npm run lint && npm test && npm run build
+# nach Änderungen (lint fällt aus, siehe §3):
+npx tsc -b && pnpm test && pnpm build
 git add -A && git commit -q -m "<knappe Subject>\n\n- <was/warum>"
 git push origin main
 # Deploy beobachten:

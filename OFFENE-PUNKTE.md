@@ -29,12 +29,22 @@ Build mit *"Rollup failed to resolve import workbox-window"*.
 
 **Als vermeintlich unbenutzte Dependency also nicht entfernen.**
 
-## Unversionierte Arbeit im Working Tree
+## `pnpm lint` ist defekt — und zwar in drei Repos
 
-Stand 26.08.2026 liegt hier nicht committete Arbeit an einem Carousel:
-`src/Root.tsx`, `src/carousel/`, `src/styles/carousel.css`, zwei Assets und eine
-Aenderung an `src/main.tsx`. Das stammt nicht aus dem pnpm-Umstieg und wurde
-bewusst nicht angefasst. Vor groesseren Aenderungen klaeren, ob das weiterlebt.
+Seit dem Wechsel auf TypeScript 7 bricht `typescript-eslint` beim Start hart ab:
+der Guard `versionMajor >= 7` wirft, in allen 8.x-Versionen bis mindestens
+8.69. Betroffen sind die drei Repos, die `typescript-eslint` deklarieren —
+**freshpost, freshdoc, sexdiary**.
+
+Das faellt nicht auf, weil der Fehler nach kaputter Installation aussieht und
+nicht nach Regelverstoss. Bis zur Loesung sind die Gates `npx tsc -b`,
+`pnpm test` und `pnpm build`.
+
+Loesung gehoert in die `hausbasis`, nicht in ein Repo allein. Drei Wege:
+TypeScript 6 nur fuer den Linter aufloesen (kostet eine zweite TS-Version im
+Store — genau das, was die hausbasis verhindern soll), typescript-eslint
+fallen lassen (die Config nutzt nur `configs.recommended`, also gar keine
+typgestuetzten Regeln — `tsc -b` deckt das ab), oder auf TS-7.1-Support warten.
 
 ## Nichts davon ist gepusht
 
