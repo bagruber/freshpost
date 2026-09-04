@@ -333,20 +333,37 @@ Was fehlt, sind drei Dinge:
    Linien). Das ist der größte Brocken: `CanvasBackground`,
    `BackgroundLayer`, `usePhoto`/`usePerson`/`useIllustration`.
 
-**Die Entscheidung: wie wird der Claim auf die Safety-Zone gerechnet?**
+**Zwei Entscheidungen sind gefallen (04.09.2026):**
 
-| | Weg | Kosten |
-|---|---|---|
-| **A** | So wie heute: aus Schriftmetriken *vorhersagen* (`text/measure.ts`, `boxes.ts`, `layout.ts`). | Das Ergebnis bleibt pixelgleich. Der Kern behält ~200 Zeilen Claim-Geometrie mit eigenem Vokabular (`Segment` = oben/main/unten) **neben** den Rollen — ein drittes Modell, das keine zweite Marke je nutzt. |
-| **B** | Den gesetzten Block *messen* und per `transform: scale()` einpassen — derselbe Zwei-Pass-Weg wie bei der inhaltsbemessenen Fläche. | `measure.ts`, `boxes.ts`, `layout.ts` und ihre Tests fallen weg. Die Größe und der Zeilenumbruch entscheidet dann der Browser, nicht die Vorhersage — freshs Claim sieht **leicht anders** aus. |
+*Auto-Größe: die Vorhersage bleibt, verallgemeinert auf Rollen.*
+`measure.ts`, `boxes.ts` und `layout.ts` bleiben im Kern, rechnen aber nicht
+mehr auf dem `Claim`-Typ, sondern auf Rollen und Frame. Der Claim sieht
+damit pixelgleich aus wie heute, und es gibt nur noch ein Modell statt zwei.
+Der Alternativweg (Block messen und per `scale()` einpassen) hätte ~200
+Zeilen gespart, aber Umbruch und Endgröße dem Browser überlassen — für
+freshs Aushängeschild zu grob.
 
-B ist die sauberere Architektur und folgt der Wurzel-Regel; A erhält das
-Aussehen exakt. Das ist keine rein technische Frage, deshalb steht sie hier
-und nicht als Umsetzung.
+Dabei wandert das Sticker-Rezept dorthin, wo es hingehört: `padX`, `padY`,
+`lineTight` und `overlapBetween` sind schon Rollen-Eigenschaften
+(`StickerStyle` bzw. `role.lineHeight`), `mainWeight`/`secondaryWeight` sind
+`role.weight`, die Größenverhältnisse stehen in `role.size`. **Von
+`StickerCapability` bleibt nur `{ tiltRange, offsetRange, autoSize }`**, dazu
+neu `StickerStyle.within` (Überlappung der Zeilen-Boxen einer Rolle).
+
+*Advanced zieht vollständig mit um.* Also drei weitere Felder:
+
+- `RoleStyle.scale` — Größe einer Rolle relativ zur größten (heute `secScale`)
+- `RoleStyle.upper` — Kapitälchen je Zeile, überschreibt `role.upper`
+- `MediaItem.grade` — die Einzelregler des Foto-Grades je Bild
+
+Dazu der Modus-Schalter in der Bedienung, der zwischen dem einen
+CI-Look-Regler und den Einzelreglern umschaltet.
+
+**Reihenfolge:** erst B1 im Browser prüfen, dann B2 — B2 benutzt dieselbe
+Sticker-Mechanik, ein Fehler darin bekäme sonst zwei Werkzeuge.
 
 **B3 Danach löschen:** `claim.ts`, `draft.ts`, `App.tsx`, `components/`,
-`hooks/`, `styles/app.css` — und je nach Entscheidung `text/boxes.ts`,
-`text/layout.ts`, `text/measure.ts`.
+`hooks/`, `styles/app.css`.
 
 ### C · Marken-Trennung fertigstellen
 - **UI-Tokens neutralisieren.** `app.css` und `carousel.css` sprechen zusammen
