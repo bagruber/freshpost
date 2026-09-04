@@ -1,6 +1,11 @@
 # freshpost — UX-Rethink, Fähigkeiten, CD-Evolution (Vorschläge)
 
 > Ergebnis des Nachdenkens nach dem Struktur-Refactor (2026-06-11).
+>
+> **Stand 04.09.2026:** Dieses Dokument ist die ausfuehrliche Fassung. Was davon
+> noch offen ist, steht kurz und priorisiert in REFACTOR_CONTEXT.md §9 E.
+> Der CD-Teil (§3 unten) betrifft nur die Marke `fresh` — seit der
+> Marken-Trennung ist er eine Frage an das Paket, nicht an das Werkzeug.
 > **Stand 2026-06-12: Pakete 1–5 (§4) sind umgesetzt** — also 1.1, 1.2, 1.3,
 > 1.4a, 1.7, 1.8, 2.1 (Logo) und 2.2 (Freistellen). Offen bleiben: 1.4b
 > (Inline-Edit auf der Stage), 1.5 (Undo), 1.6 (Würfeln mit Vorschau),

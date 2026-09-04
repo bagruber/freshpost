@@ -1,7 +1,10 @@
 # Offene Punkte
 
-*Notiert am 26.08.2026 fuer spaetere Sitzungen. Erledigte Punkte bitte streichen,
-nicht abhaken — die Datei soll kurz bleiben.*
+*Fuer spaetere Sitzungen. Erledigte Punkte bitte streichen, nicht abhaken —
+die Datei soll kurz bleiben. Zuletzt ergaenzt 04.09.2026.*
+
+**Hier stehen Infrastruktur- und Entscheidungspunkte.** Der fachliche Fahrplan
+(Architektur, Migration, Marken) steht in REFACTOR_CONTEXT.md §9.
 
 
 ## Toolchain-Stand
@@ -60,6 +63,41 @@ Neu seit dem 04.09.2026: der Runner meldet bei jedem Lauf
 Noch kein Fehler, aber es betrifft **jedes Repo mit diesem Workflow**. Also
 zusammen anheben, sobald pnpm/action-setup eine Node-24-Version hat — nicht
 in einem Repo allein.
+
+## Entscheidung offen: Repo umbenennen
+
+`freshpost` passt nicht mehr — das Werkzeug traegt inzwischen mehrere Marken
+(fresh, SZ). Vorschlaege, in der Linie der uebrigen Repos (`hausbasis`,
+`baumkarte`, `haushaltvis`):
+
+| Name | Warum |
+|---|---|
+| **`umbruch`** *(Empfehlung)* | Typografisch genau der Vorgang: Text und Bild in eine Flaeche umbrechen. Heisst zugleich „Wandel", was bei einem Zeitungskunden mitschwingt. Kurz, eindeutig. |
+| `satzspiegel` | Die Satzflaeche einer Seite — also das, was das Werkzeug erzwingt. Praeziser, aber sproeder. |
+| `schablone` | Marke als Schablone, Inhalt fliesst hindurch. Trifft die Architektur, klingt nach Bastelbogen. |
+| `kachel` | Was herauskommt. Sagt nichts ueber die Regeln — und die sind der Wert. |
+
+Haengt an vier Stellen: `vite.config.ts` (`base`), `package.json` (`name`),
+PWA-Manifest, Pages-URL. Zehn Minuten Arbeit, aber **erst nach der
+Entscheidung** — und der Push danach aendert die Live-Adresse.
+
+## Zu klaeren: SZ-Wortmarke im oeffentlichen Repo
+
+`src/brands/sz/assets/wortmarke.svg` liegt im Repo, weil der Build sie braucht.
+Das Repo ist oeffentlich (GitHub Pages). Ein fremdes Markenzeichen dort ist
+eine Entscheidung, die nicht nebenbei getroffen werden sollte — entweder das
+Repo wird privat, oder das Logo kommt nur lokal dazu, oder es bleibt bewusst so.
+
+Die 22 Beispielbilder unter `sz_beispiele/` sind bereits ignoriert
+(Pressefotos Dritter, Rechte liegen nicht bei uns). Sie sind reines
+Referenzmaterial; die daraus gemessenen Werte stehen im Marken-Paket.
+
+## SZ-Schriften sind Ersatz
+
+Die Hausschriften (SZ Sans / SZ Serif) sind nicht lizenziert. Im Paket stehen
+**Fira Sans** und **Source Serif 4** aus Google Fonts als naechste Verwandte,
+markiert mit `type.substitute: true` — die Bedienoberfläche weist im
+Beitrag-Werkzeug darauf hin. Bei einer echten Zusammenarbeit auszutauschen.
 
 ## Beim naechsten Paket-Update
 
