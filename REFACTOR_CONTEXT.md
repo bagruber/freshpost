@@ -98,11 +98,13 @@ src/
   core/                    kennt keine Marke — kein Hex, kein Schriftname, keine Regel
     canvas/                Scaled · dimension · geometry · exportImage · patterns/
     color/                 hsv · grade (Foto-Filter) · snap (Hue-Snap) · svgRecolor
-    text/                  measure · boxes · layout · markers
+    text/                  measure · boxes · layout · markers  (nur noch Einzelpost)
     media/                 readFile · image · illustration · personImage · removeBg
     input/                 controls.tsx · useDrag · usePointerDrag
-    doc/                   composition ⭐ · claim · logo · draft · validate
-    render/                FrameView ⭐ · TextStack ⭐ · bandGeometry ⭐ · tintSvg ⭐
+    doc/                   composition · claim · logo · draft · validate
+    render/                FrameView · TextStack · bandGeometry · HeadMeasurer
+                           Progress · RoughImage · ground · useGroundLayers
+                           useMediaDrag · tintSvg
     ui/                    BusyOverlay
     styles/                base.css (UI-Maßstab) · frame.css (Renderer)
     config.ts              Regler-Bereiche, Startwerte
@@ -112,31 +114,27 @@ src/
     context.tsx            BrandProvider, schreibt die Tokens auf :root
   brands/
     fresh/  sz/  _probe/   Werte, Assets, Regeln
-  compose/                 ⭐ das gemeinsame Werkzeug (Composition)
+  compose/                 das gemeinsame Werkzeug: ComposeApp · ComposeControls
+                           Filmstrip · composeDraft · migrateCarousel
   App.tsx components/ hooks/    fresh-Altbestand: Einzelpost
-  carousel/                     fresh-Altbestand: Langtext
-  styles/                  app.css · carousel.css (noch fresh-nah, siehe §9)
+  styles/                  app.css (Einzelpost) · compose.css (Werkzeug-Hülle)
 ```
-
-⭐ = neu in Schritt 4.
 
 **Wer wählt die Marke?** Ausschließlich `main.tsx`. Ein Test hält das fest.
 
-### Drei Werkzeuge, zwei Modelle
+### Zwei Werkzeuge, zwei Modelle
 
 | Werkzeug | Modell | Status |
 |---|---|---|
-| **Beitrag** (`compose/`) | `Composition` = `Frame[]` | der Weg nach vorn; markengetrieben |
-| **Einzelpost** (`App.tsx`) | `Claim` | fresh-Altbestand, wartet auf Migration |
-| **Langtext** (`carousel/`) | `CarouselDoc`/`Slide` | fresh-Altbestand, wartet auf Migration |
+| **Beitrag** (`compose/`) | `Composition` = `Frame[]` | markengetrieben; das Langtext-Werkzeug ist darin aufgegangen |
+| **Einzelpost** (`App.tsx`) | `Claim` | letzter fresh-Altbestand, wartet auf Migration |
 
-Die beiden Altbestände erscheinen **nur bei Marken mit den nötigen
-Fähigkeiten** (`sticker`, `colors`, `ground`). Unter SZ sind sie gar nicht
-sichtbar — `Root.tsx` blendet sie aus.
+Der Altbestand erscheint **nur bei Marken mit den nötigen Fähigkeiten**
+(`sticker`, `colors`, `ground`). Unter SZ ist er gar nicht sichtbar —
+`Root.tsx` blendet ihn aus.
 
-**Solange sie existieren, kostet jede neue Fähigkeit zweimal.** Das ist die
-Steuer, die Schritt 4 abschaffen soll; erledigt ist sie erst nach der
-Migration (§9).
+**Solange er existiert, kostet jede neue Fähigkeit zweimal.** Nach der
+Einzelpost-Migration ist diese Steuer abgeschafft (§9 B).
 
 ### Skalierungsmodell
 - Inhalte sind in **echten Export-Pixeln** dimensioniert und werden per
@@ -204,26 +202,46 @@ Diese Dinge sind subtil und beim Umbau leicht kaputtzumachen.
    Beim Export deshalb **zwei rAF abwarten**: eins fürs Rendern, eins für die
    Messung.
 
-5. **Logo-Einfärbung.** Marken-Logos werden über `core/render/tintSvg` in die
+5. **Schräge Flächenkante: die Bildzone reicht weiter als das Band.** Bei
+   `edge: "diagonal"` steigt die Kante nach links an. Die Bildzone geht
+   deshalb bis `bandTop + edgeCut × bandHöhe`, nicht bis `bandTop` — sonst
+   klafft an der langen Ecke eine Lücke. Steht in `bandGeometry`, mit Test.
+
+6. **Randabfallendes Bild darf keinen eigenen Stapelkontext haben.** Die
+   tonale Einfärbung ist ein `mix-blend-mode`; er mischt nur innerhalb des
+   nächsten Stapelkontexts. Deshalb hat `.fp-media-fill` bewusst
+   `z-index: auto` — mit `z-index: 0` mischt das Bild mit dem leeren Kasten
+   statt mit dem Grund und die Einfärbung verschwindet ersatzlos.
+
+7. **Sticker kippen als Gruppe, nicht einzeln.** Aufeinanderfolgende
+   Sticker-Rollen bündelt `TextStack` in ein `.fp-stack` und dreht dieses.
+   Einzeln gedreht hängt ihr Abstand an der Neigung — bei ±9° sichtbar.
+
+8. **Kopfhöhen werden über alle Frames angeglichen.** `HeadMeasurer` setzt
+   jeden Kopf offscreen (`visibility: hidden`, nicht `display: none` — sonst
+   misst `offsetHeight` null) und meldet je Layout das Maximum. Der Rückgabe-
+   Handler dedupliziert, sonst greift Mechanik 3.
+
+9. **Logo-Einfärbung.** Marken-Logos werden über `core/render/tintSvg` in die
    Textfarbe der Fläche gefärbt und als Data-URL in ein `<img>` gegeben.
    CSS-Masken und `filter`-Tricks fallen beim html-to-image-Capture teils aus.
    SZ setzt das Logo zusätzlich auf 70 % Deckkraft — rechnerisch bestätigt.
 
-6. **Claim-Stack: Hintergrund und Text in getrennten z-Ebenen.** Pro Sektion
+10. **Claim-Stack: Hintergrund und Text in getrennten z-Ebenen.** Pro Sektion
    ein eigener Stacking-Context (`isolation: isolate`), alle Box-Hintergründe
    `z=0` unter allem Text `z=1` — damit überlappende Zeilen-Boxen verschmelzen
    können, ohne fremden Text zu verdecken.
 
-7. **Person Rough-Frame (SVG-Filter, `PersonLayer.tsx`):** Alpha hart schwellen
+11. **Person Rough-Frame (SVG-Filter, `PersonLayer.tsx`):** Alpha hart schwellen
    → `feMorphology` dilate → `feTurbulence`+`feDisplacementMap` → Blur+
    Re-Schwelle → `feFlood`+composite → Original darüber. Tuning-Konstanten oben
    in der Datei. Im JPG-Export verifiziert (2026-06-12).
 
-8. **Hintergrund-Rezept (fresh, Illustrations-/Person-Mode):** Struktur in Grau,
+12. **Hintergrund-Rezept (fresh, Illustrations-/Person-Mode):** Struktur in Grau,
    darüber der Tint als Multiply 100 %. `.illu-bg` (heller Base, `isolation`)
    + Muster-Layer in Grau + `.bg-tint` als letztes Kind.
 
-9. **Tuning-Knöpfe** bewusst verteilt lassen, nicht verstecken:
+13. **Tuning-Knöpfe** bewusst verteilt lassen, nicht verstecken:
    - `brands/<marke>/tokens.ts` — alle Farben und Schriften der Marke
    - `brands/<marke>/index.ts` — Regeln, Rollen, Layouts, Maße
    - `core/config.ts` — Regler-Bereiche und Startwerte der Bedienung
@@ -280,7 +298,7 @@ vermutlich gar nicht Sache der Marke.
 
 ## 9. Wo es weitergeht — TODOs, priorisiert
 
-### A · Zuerst: im Browser ansehen
+### A · Zuerst: im Browser ansehen — noch offen
 Der neue Renderer (`core/render/`, `compose/`) ist **nur durch Typen, Tests und
 die nachgerechnete Geometrie gedeckt — nicht durch ein Auge auf der
 Oberfläche.** `pnpm dev`, dann `?brand=sz` und `?brand=fresh` durchsehen, bevor
@@ -291,16 +309,44 @@ erste Bild kann kurz falsch stehen; das Logo wird per `fetch` geladen und
 erscheint verzögert.
 
 ### B · Die Altbestände migrieren (schafft die Doppelbau-Steuer ab)
-1. **Langtext → Composition.** Die vier Sonder-Layouts (Diagonale, Randspalte,
-   Vollfläche, Bild-Overlay) ins Layout-Vokabular heben. Die Randspalte braucht
-   ein neues `band: "side"`. → *verify:* gespeicherte Entwürfe migrieren, Export
-   unverändert
-2. **Einzelpost → Composition.** Dafür fehlt dem Renderer die **gekippte
-   Sticker-Komposition**: `TextRole` braucht ein optionales `sticker`-Feld
-   (Box-Hintergrund je Rolle, Neigung, Überlappung), dann ist freshs Claim eine
-   Rollen-Komposition wie jede andere. → *verify:* Export byte-nah
-3. **Alte Modelle löschen.** `claim.ts`, `carousel/model.ts`, beide
-   Entwurfs-Module, `App.tsx`, `carousel/`. → *verify:* 108+ Tests grün
+
+**B1 Langtext → Composition: erledigt** (`33a9b7c`). Die vier Vorlagen sind
+Layouts geworden; `src/carousel/` ist gelöscht. Der Vertrag hat dafür
+bekommen: `band: "side"`, `edge: "diagonal"` + `edgeCut`, `MediaSpec`
+(`zone`/`fill`/`float`), `TextRole.tint`/`.sticker`, `Layout.headSlots`,
+`padTop`/`padBottom`, `textOverhang`, `BrandCore.progress`,
+`GroundCapability.halftoneInk`. Gespeicherte Entwürfe werden einmalig
+übernommen (`compose/migrateCarousel.ts` — Wegwerf-Code, kann weg, sobald
+niemand mehr einen `freshpost.carousel.v4` im Browser hat).
+
+**B2 Einzelpost → Composition: offen, und mit einer Entscheidung davor.**
+Die drei Sticker-Zeilen sind im neuen Modell drei Rollen — das ist erledigt.
+Was fehlt, sind drei Dinge:
+
+1. **Frei gesetzter Satz.** `Layout.textPlace: "free"` plus `Frame.textX/Y`,
+   Drag mit Klemmung und Safety-Warnung. Die Geometrie dafür liegt fertig in
+   `core/canvas/geometry.ts`.
+2. **Auto-Größe.** Der Claim wächst, bis er die Safety-Zone füllt. **Hier
+   liegt die Entscheidung**, siehe unten.
+3. **Hintergründe.** Foto mit Grade und Pan/Zoom, Illustration,
+   freigestellte Person mit Look-Filter, dazu die Muster (Papier, Punkte,
+   Linien). Das ist der größte Brocken: `CanvasBackground`,
+   `BackgroundLayer`, `usePhoto`/`usePerson`/`useIllustration`.
+
+**Die Entscheidung: wie wird der Claim auf die Safety-Zone gerechnet?**
+
+| | Weg | Kosten |
+|---|---|---|
+| **A** | So wie heute: aus Schriftmetriken *vorhersagen* (`text/measure.ts`, `boxes.ts`, `layout.ts`). | Das Ergebnis bleibt pixelgleich. Der Kern behält ~200 Zeilen Claim-Geometrie mit eigenem Vokabular (`Segment` = oben/main/unten) **neben** den Rollen — ein drittes Modell, das keine zweite Marke je nutzt. |
+| **B** | Den gesetzten Block *messen* und per `transform: scale()` einpassen — derselbe Zwei-Pass-Weg wie bei der inhaltsbemessenen Fläche. | `measure.ts`, `boxes.ts`, `layout.ts` und ihre Tests fallen weg. Die Größe und der Zeilenumbruch entscheidet dann der Browser, nicht die Vorhersage — freshs Claim sieht **leicht anders** aus. |
+
+B ist die sauberere Architektur und folgt der Wurzel-Regel; A erhält das
+Aussehen exakt. Das ist keine rein technische Frage, deshalb steht sie hier
+und nicht als Umsetzung.
+
+**B3 Danach löschen:** `claim.ts`, `draft.ts`, `App.tsx`, `components/`,
+`hooks/`, `styles/app.css` — und je nach Entscheidung `text/boxes.ts`,
+`text/layout.ts`, `text/measure.ts`.
 
 ### C · Marken-Trennung fertigstellen
 - **UI-Tokens neutralisieren.** `app.css` und `carousel.css` sprechen zusammen
