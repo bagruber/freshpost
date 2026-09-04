@@ -46,12 +46,20 @@ Store — genau das, was die hausbasis verhindern soll), typescript-eslint
 fallen lassen (die Config nutzt nur `configs.recommended`, also gar keine
 typgestuetzten Regeln — `tsc -b` deckt das ab), oder auf TS-7.1-Support warten.
 
-## Nichts davon ist gepusht
+## Deploy laeuft; `pnpm/action-setup@v4` ist deprecated
 
-Alle Aenderungen vom 26.08.2026 liegen als lokale Commits. Der Deploy-Workflow
-wurde von `npm ci` auf `pnpm install --frozen-lockfile` umgestellt und bekommt
-einen `pnpm/action-setup@v4`-Schritt. **Der erste Push aktiviert das.** Bricht
-danach ein Deploy, ist das die erste Stelle zum Nachsehen — nicht der App-Code.
+Der auf pnpm umgestellte Workflow ist seit dem 26.08.2026 aktiv und
+funktioniert (zuletzt gruen am 04.09.2026). Der frueher hier stehende Hinweis
+"nichts ist gepusht, der erste Push aktiviert das" ist damit erledigt.
+
+Neu seit dem 04.09.2026: der Runner meldet bei jedem Lauf
+
+> Node.js 20 is deprecated. The following actions target Node.js 20 but are
+> being forced to run on Node.js 24: `pnpm/action-setup@v4`.
+
+Noch kein Fehler, aber es betrifft **jedes Repo mit diesem Workflow**. Also
+zusammen anheben, sobald pnpm/action-setup eine Node-24-Version hat — nicht
+in einem Repo allein.
 
 ## Beim naechsten Paket-Update
 
