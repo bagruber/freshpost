@@ -37,7 +37,7 @@ export function ComposeApp() {
   const [error, setError] = useState<string | null>(null);
   const [fontsReady, setFontsReady] = useState(false);
   const [headMins, setHeadMins] = useState<Record<string, number>>({});
-  const [logoSvg, setLogoSvg] = useState<string>();
+  const [tintSvg, setTintSvg] = useState<{ url: string; svg: string }>();
 
   const dimension = getDimension(brand.formats, doc.formatKey);
   const index = Math.max(0, doc.frames.findIndex((f) => f.id === selectedId));
@@ -51,18 +51,22 @@ export function ComposeApp() {
     ? null
     : brand.logo.options.find((o) => o.key === doc.logoKey)?.url ?? null;
 
+  // Das geladene SVG merkt sich seine URL; gilt sie nicht mehr, gibt es kein
+  // Logo, ohne dass der Effect dafuer State zuruecksetzen muss.
+  const tintUrl = tintLogo ? brand.logo.options[0]?.url : undefined;
+  const logoSvg = tintSvg && tintSvg.url === tintUrl ? tintSvg.svg : undefined;
+
   useEffect(() => {
-    const url = tintLogo ? brand.logo.options[0]?.url : undefined;
-    if (!url) return setLogoSvg(undefined);
+    if (!tintUrl) return;
     let alive = true;
-    fetch(url)
+    fetch(tintUrl)
       .then((r) => r.text())
-      .then((t) => alive && setLogoSvg(t))
+      .then((svg) => alive && setTintSvg({ url: tintUrl, svg }))
       .catch(() => {});
     return () => {
       alive = false;
     };
-  }, [brand, tintLogo]);
+  }, [tintUrl]);
 
   useEffect(() => {
     document.fonts.ready.then(() => setFontsReady(true));
